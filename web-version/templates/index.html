@@ -3,48 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏈 NFL AI Companion</title>
+    <title>SportsAI</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🏈 NFL AI Companion</h1>
-            <p class="subtitle">Your intelligent American Football discussion partner</p>
-            <button id="resetBtn" class="reset-btn">Reset Conversation</button>
+    <div class="app-container">
+        <header class="top-bar">
+            <div class="logo-section">
+                <span class="logo">🏈</span>
+                <span class="app-name">SportsAI</span>
+            </div>
+            <button id="resetBtn" class="reset-btn" title="New chat">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                </svg>
+            </button>
         </header>
 
         <div class="chat-container" id="chatContainer">
-            <div class="message assistant-message">
-                <div class="message-content">
-                    <strong>🏈 NFL Companion:</strong>
-                    <p>Hey there! I'm your NFL discussion partner. I can help you with:</p>
-                    <ul>
-                        <li>Live scores and game updates</li>
-                        <li>Tactical analysis and X's & O's</li>
-                        <li>Fantasy football decisions</li>
-                        <li>Deep dives into strategy and matchups</li>
-                    </ul>
-                    <p>What's on your mind? Ask me anything about football!</p>
+            <div class="welcome-section">
+                <div class="welcome-icon">🏈</div>
+                <h1 class="welcome-title">SportsAI</h1>
+                <p class="welcome-subtitle">Your intelligent sports companion</p>
+                <div class="example-prompts">
+                    <button class="prompt-card" data-question="What games are on right now?">
+                        <span class="prompt-icon">📊</span>
+                        <span>Check live scores</span>
+                    </button>
+                    <button class="prompt-card" data-question="Explain Cover 2 defense">
+                        <span class="prompt-icon">🛡️</span>
+                        <span>Tactical analysis</span>
+                    </button>
+                    <button class="prompt-card" data-question="Should I start Breece Hall or Jahmyr Gibbs?">
+                        <span class="prompt-icon">🏆</span>
+                        <span>Fantasy advice</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div class="input-container">
-            <div class="example-questions">
-                <button class="example-btn" data-question="What games are on right now?">📊 Live Scores</button>
-                <button class="example-btn" data-question="Explain Cover 2 defense">🛡️ Tactics</button>
-                <button class="example-btn" data-question="Should I start Breece Hall or Jahmyr Gibbs?">🏆 Fantasy</button>
-            </div>
-            <div class="input-row">
+        <div class="input-section">
+            <div class="input-wrapper">
                 <textarea 
                     id="userInput" 
-                    placeholder="Ask about games, tactics, fantasy advice, or anything NFL..."
-                    rows="2"
+                    placeholder="Message SportsAI..."
+                    rows="1"
                 ></textarea>
                 <button id="sendBtn" class="send-btn">
-                    <span class="send-text">Send</span>
-                    <span class="send-icon">🏈</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M7 11L12 6L17 11M12 18V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 </button>
             </div>
             <div class="typing-indicator" id="typingIndicator" style="display: none;">
