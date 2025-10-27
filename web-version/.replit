@@ -1,0 +1,5 @@
+{
+  "run": "python app.py",
+  "language": "python3",
+  "entrypoint": "app.py"
+}
