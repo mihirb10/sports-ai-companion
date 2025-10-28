@@ -1734,8 +1734,28 @@ def create_app():
                         "content": "I understand the context from our previous exchange."
                     })
             
+            # Check if we're awaiting team selection from user
+            fantasy_context = json.loads(conversation.fantasy_context)
+            awaiting_team_selection = fantasy_context.get('awaiting_team_selection', False)
+            
+            if awaiting_team_selection:
+                # User's message is their team name selection
+                context_message = "TEAM SELECTION CONTEXT:\n"
+                context_message += f"You just asked the user to select their team from the league.\n"
+                context_message += f"The user has responded with: '{user_message}'\n"
+                context_message += f"This is their team name selection. Call get_fantasy_team with team_name='{user_message}' to fetch their roster.\n"
+                context_message += f"Use the stored ESPN credentials from the fantasy context.\n"
+                
+                conversation_history.append({
+                    "role": "user",
+                    "content": context_message
+                })
+                conversation_history.append({
+                    "role": "assistant",
+                    "content": "I understand. I'll fetch their roster now."
+                })
             # If fantasy football question, prepend fantasy context
-            if is_fantasy_question:
+            elif is_fantasy_question:
                 fantasy_context = json.loads(conversation.fantasy_context)
                 has_context = (fantasy_context.get('my_team') or 
                              fantasy_context.get('interested_players') or 
@@ -1807,15 +1827,24 @@ def create_app():
             # If ESPN fantasy team was fetched, update fantasy context with roster data
             if tool_usage.get('used_get_fantasy_team'):
                 fantasy_team_data = tool_usage.get('fantasy_team_data', {})
+                fantasy_context = json.loads(conversation.fantasy_context)
+                
                 if fantasy_team_data.get('success') and not fantasy_team_data.get('needs_team_selection'):
-                    fantasy_context = json.loads(conversation.fantasy_context)
-                    
                     # Store ESPN roster data separately from manually entered team
                     fantasy_context['espn_roster'] = fantasy_team_data.get('roster', [])
                     fantasy_context['espn_matchup'] = fantasy_team_data.get('matchup', {})
                     fantasy_context['espn_standings'] = fantasy_team_data.get('standings', {})
                     fantasy_context['espn_team_name'] = fantasy_team_data.get('team_name')  # Store team name for future calls
                     fantasy_context['last_espn_fetch'] = datetime.now().isoformat()
+                    # Clear the awaiting_team_selection flag since we now have their team
+                    fantasy_context['awaiting_team_selection'] = False
+                    
+                    # Update database
+                    conversation.fantasy_context = json.dumps(fantasy_context)
+                    db.session.commit()
+                elif fantasy_team_data.get('needs_team_selection'):
+                    # Set flag to indicate we're waiting for user to select their team
+                    fantasy_context['awaiting_team_selection'] = True
                     
                     # Update database
                     conversation.fantasy_context = json.dumps(fantasy_context)

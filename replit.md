@@ -91,10 +91,14 @@ For ESPN integration, the AI provides:
 - Supports both public leagues (League ID only) and private leagues (League ID + ESPN_S2 + SWID)
 - Credentials are automatically injected when calling ESPN API tools
 
-**Two-Step Team Selection**:
+**Two-Step Team Selection with Context Retention**:
 1. First call shows all teams in the league
-2. User selects their team by name
-3. System remembers team name for automatic use in future requests
+2. AI asks "Tell me which team is yours and I'll pull your current roster, this week's matchup, and give you personalized start/sit recommendations! 🎯"
+3. System sets `awaiting_team_selection` flag in user's fantasy_context
+4. User's next message is automatically treated as their team name selection
+5. System injects context telling AI the user's message is their team selection
+6. System remembers team name for automatic use in all future requests
+7. Flag is cleared once roster data is successfully fetched
 
 Error handling includes specific messages for invalid credentials, expired cookies, rate limiting, and league access issues.
 
