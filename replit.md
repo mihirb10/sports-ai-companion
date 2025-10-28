@@ -6,6 +6,13 @@ SportsAI is a Flask-based web application that provides an intelligent conversat
 
 ## Recent Changes
 
+**October 28, 2025**: Proactive fantasy injury monitoring
+- **Automatic injury alerts**: At session start (max once per day), the app proactively checks for injury news about players on user's fantasy roster
+- **Smart news scanning**: Searches NFL news feeds for injury-related headlines mentioning fantasy team players
+- **Filtered updates only**: Only shows message ("By the way - here's an injury update for your fantasy team") if actual injury news is found
+- **Database tracking**: Added last_injury_check timestamp to prevent spam and limit to daily checks
+- Uses existing fantasy_context (my_team, interested_players) to personalize injury monitoring
+
 **October 28, 2025**: Injury reports & NFL news/trade rumors integration
 - **Added get_injury_report() tool**: Provides guidance on injury reports and player availability status with links to official ESPN injury page
 - **Added get_nfl_news() tool**: Fetches latest NFL news and trade rumors from RSS feeds (NFL Trade Rumors + Pro Football Rumors)

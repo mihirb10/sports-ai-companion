@@ -670,14 +670,16 @@ def create_app():
             if should_check_injuries and has_fantasy_data:
                 injury_check_result = companion.check_fantasy_team_injuries(fantasy_context)
                 
-                if injury_check_result.get('success') and injury_check_result.get('updates'):
+                # Only show message if there are actual updates (count > 0)
+                if injury_check_result.get('success') and injury_check_result.get('count', 0) > 0:
                     # Format injury update message
                     injury_update_message = "By the way - here's an injury update for your fantasy team:\n\n"
-                    for update in injury_check_result['updates']:
+                    for update in injury_check_result.get('updates', []):
                         injury_update_message += f"• **{update['player']}**: {update['headline']}\n"
                     injury_update_message += "\n"
                 
-                # Update last injury check timestamp
+                # Always update last injury check timestamp (regardless of whether updates were found)
+                # This prevents checking again within 24 hours
                 conversation.last_injury_check = datetime.now()
                 db.session.commit()
             
