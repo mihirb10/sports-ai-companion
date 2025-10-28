@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """
-NFL AI Companion - Web Version for Replit
-Flask-based web interface with chat UI
+SportsAI - Flask web application with user authentication
+Integrated with Replit Auth for Google and email/password login
 """
 
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_login import current_user
 import anthropic
 import requests
 import json
 import os
 from datetime import datetime
-import secrets
+import logging
 
-app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(16))
+from models import db, User, Conversation
+from replit_auth import login_manager, make_replit_blueprint, require_login
+
+logging.basicConfig(level=logging.DEBUG)
 
 class NFLCompanion:
     def __init__(self, anthropic_api_key: str):
@@ -110,13 +114,11 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
 
     def chat(self, user_message: str, conversation_history: list) -> tuple:
         """Main chat interface with tool use."""
-        # Add user message to history
         conversation_history.append({
             "role": "user",
             "content": user_message
         })
         
-        # Define tools
         tools = [
             {
                 "name": "get_live_scores",
@@ -143,7 +145,6 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
             }
         ]
         
-        # Make API call
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
@@ -152,13 +153,11 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
             tools=tools
         )
         
-        # Handle tool use
         while response.stop_reason == "tool_use":
             tool_use_block = next(block for block in response.content if block.type == "tool_use")
             tool_name = tool_use_block.name
             tool_input = tool_use_block.input
             
-            # Execute tool
             if tool_name == "get_live_scores":
                 tool_result = self.get_live_scores()
             elif tool_name == "get_team_stats":
@@ -166,7 +165,6 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
             else:
                 tool_result = {"error": "Unknown tool"}
             
-            # Add to history - convert content blocks to serializable format
             serialized_content = []
             for block in response.content:
                 if block.type == "text":
@@ -198,7 +196,6 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
                 ]
             })
             
-            # Continue conversation
             response = self.client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=4096,
@@ -207,13 +204,11 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
                 tools=tools
             )
         
-        # Extract text response
         assistant_message = ""
         for block in response.content:
             if hasattr(block, "text"):
                 assistant_message += block.text
         
-        # Add to history
         conversation_history.append({
             "role": "assistant",
             "content": assistant_message
@@ -222,76 +217,108 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
         return assistant_message, conversation_history
 
 
-# Initialize companion
-api_key = os.environ.get('ANTHROPIC_API_KEY')
-if not api_key:
-    print("⚠️  WARNING: ANTHROPIC_API_KEY not set in environment variables!")
-    print("Set it in Replit Secrets or your environment")
-
-companion = NFLCompanion(api_key) if api_key else None
-
-
-@app.route('/')
-def index():
-    """Render the main chat interface."""
-    return render_template('index.html')
-
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    """Handle chat messages."""
-    if not companion:
-        return jsonify({
-            'error': 'API key not configured. Please set ANTHROPIC_API_KEY in Replit Secrets.'
-        }), 500
+def create_app():
+    """Application factory."""
+    app = Flask(__name__)
     
-    try:
-        data = request.json
-        user_message = data.get('message', '')
+    app.secret_key = os.environ.get("SESSION_SECRET")
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        'pool_pre_ping': True,
+        "pool_recycle": 300,
+    }
+    
+    db.init_app(app)
+    login_manager.init_app(app)
+    
+    with app.app_context():
+        db.create_all()
+        logging.info("Database tables created")
+    
+    app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+    
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        logging.warning("ANTHROPIC_API_KEY not set in environment variables!")
+    
+    companion = NFLCompanion(api_key) if api_key else None
+    
+    def get_or_create_conversation(user_id: str) -> Conversation:
+        """Get or create conversation for a user."""
+        conversation = Conversation.query.filter_by(user_id=user_id).first()
+        if not conversation:
+            conversation = Conversation(user_id=user_id, history='[]')
+            db.session.add(conversation)
+            db.session.commit()
+        return conversation
+    
+    @app.route('/')
+    def index():
+        """Landing/Chat page."""
+        if not current_user.is_authenticated:
+            return render_template('login.html')
+        return render_template('index.html')
+    
+    @app.route('/chat', methods=['POST'])
+    @require_login
+    def chat():
+        """Handle chat messages."""
+        if not companion:
+            return jsonify({
+                'error': 'API key not configured. Please set ANTHROPIC_API_KEY in Replit Secrets.'
+            }), 500
         
-        if not user_message:
-            return jsonify({'error': 'No message provided'}), 400
+        try:
+            data = request.json
+            user_message = data.get('message', '')
+            
+            if not user_message:
+                return jsonify({'error': 'No message provided'}), 400
+            
+            conversation = get_or_create_conversation(current_user.id)
+            conversation_history = json.loads(conversation.history)
+            
+            response, updated_history = companion.chat(user_message, conversation_history)
+            
+            conversation.history = json.dumps(updated_history)
+            db.session.commit()
+            
+            return jsonify({
+                'response': response,
+                'success': True
+            })
         
-        # Get or initialize conversation history
-        if 'conversation_history' not in session:
-            session['conversation_history'] = []
-        
-        conversation_history = session['conversation_history']
-        
-        # Get response
-        response, updated_history = companion.chat(user_message, conversation_history)
-        
-        # Update session
-        session['conversation_history'] = updated_history
-        
+        except Exception as e:
+            logging.error(f"Chat error: {e}")
+            return jsonify({
+                'error': str(e),
+                'success': False
+            }), 500
+    
+    @app.route('/reset', methods=['POST'])
+    @require_login
+    def reset():
+        """Reset conversation history."""
+        conversation = get_or_create_conversation(current_user.id)
+        conversation.history = '[]'
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Conversation reset'})
+    
+    @app.route('/health', methods=['GET'])
+    def health():
+        """Health check endpoint."""
         return jsonify({
-            'response': response,
-            'success': True
+            'status': 'healthy',
+            'api_key_configured': bool(api_key)
         })
     
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'success': False
-        }), 500
+    return app
 
 
-@app.route('/reset', methods=['POST'])
-def reset():
-    """Reset conversation history."""
-    session['conversation_history'] = []
-    return jsonify({'success': True, 'message': 'Conversation reset'})
-
-
-@app.route('/health', methods=['GET'])
-def health():
-    """Health check endpoint."""
-    return jsonify({
-        'status': 'healthy',
-        'api_key_configured': bool(api_key)
-    })
-
+app = create_app()
 
 if __name__ == '__main__':
-    # Run on all interfaces for Replit
     app.run(host='0.0.0.0', port=5000, debug=True)
