@@ -440,14 +440,95 @@ def create_app():
             if not user_message:
                 return jsonify({'error': 'No message provided'}), 400
             
+            # Get conversation record
+            conversation = get_or_create_conversation(current_user.id)
+            
+            # Check if this is a fantasy football question
+            fantasy_keywords = ['fantasy', 'my team', 'my roster', 'trade', 'waiver', 'start', 'sit', 'bench', 'draft']
+            is_fantasy_question = any(keyword in user_message.lower() for keyword in fantasy_keywords)
+            
             # Start with empty history each time (no retained context)
             # This keeps API costs low and avoids rate limits
             conversation_history = []
             
+            # If fantasy football question, prepend fantasy context
+            if is_fantasy_question:
+                fantasy_context = json.loads(conversation.fantasy_context)
+                if fantasy_context.get('my_team') or fantasy_context.get('interested_players') or fantasy_context.get('trade_history'):
+                    context_message = "FANTASY FOOTBALL CONTEXT:\n"
+                    if fantasy_context.get('my_team'):
+                        context_message += f"My Team: {', '.join(fantasy_context['my_team'])}\n"
+                    if fantasy_context.get('interested_players'):
+                        context_message += f"Players I'm Interested In: {', '.join(fantasy_context['interested_players'])}\n"
+                    if fantasy_context.get('trade_history'):
+                        context_message += f"Trade History: {'; '.join(fantasy_context['trade_history'])}\n"
+                    
+                    conversation_history.append({
+                        "role": "user",
+                        "content": context_message
+                    })
+                    conversation_history.append({
+                        "role": "assistant",
+                        "content": "I'll remember your fantasy football context."
+                    })
+            
             response, updated_history = companion.chat(user_message, conversation_history)
             
-            # Still save to database for user's chat history display
-            conversation = get_or_create_conversation(current_user.id)
+            # If fantasy football question, extract and update fantasy context
+            if is_fantasy_question:
+                try:
+                    # Ask AI to extract fantasy football information
+                    extract_prompt = f"""Based on this conversation:
+User: {user_message}
+Assistant: {response}
+
+Extract any fantasy football information mentioned and return ONLY a JSON object with this structure:
+{{"my_team": ["player names on my team"], "interested_players": ["players I'm interested in"], "trade_history": ["trade offers mentioned"]}}
+
+Return ONLY the JSON, nothing else."""
+                    
+                    extract_response = companion.client.messages.create(
+                        model="claude-sonnet-4-20250514",
+                        max_tokens=1024,
+                        messages=[{"role": "user", "content": extract_prompt}]
+                    )
+                    
+                    extract_text = ""
+                    for block in extract_response.content:
+                        if hasattr(block, "text"):
+                            extract_text += block.text
+                    
+                    # Parse extracted data
+                    import re
+                    json_match = re.search(r'\{.*\}', extract_text, re.DOTALL)
+                    if json_match:
+                        new_fantasy_data = json.loads(json_match.group())
+                        
+                        # Merge with existing fantasy context
+                        fantasy_context = json.loads(conversation.fantasy_context)
+                        
+                        # Add new players to my_team (avoid duplicates)
+                        for player in new_fantasy_data.get('my_team', []):
+                            if player and player not in fantasy_context['my_team']:
+                                fantasy_context['my_team'].append(player)
+                        
+                        # Add new interested players (avoid duplicates)
+                        for player in new_fantasy_data.get('interested_players', []):
+                            if player and player not in fantasy_context['interested_players']:
+                                fantasy_context['interested_players'].append(player)
+                        
+                        # Add new trades (keep all)
+                        for trade in new_fantasy_data.get('trade_history', []):
+                            if trade:
+                                fantasy_context['trade_history'].append(trade)
+                        
+                        # Update database
+                        conversation.fantasy_context = json.dumps(fantasy_context)
+                        
+                except Exception as extract_error:
+                    logging.warning(f"Could not extract fantasy context: {extract_error}")
+            
+            # Save conversation history to database for user's chat history display
             conversation.history = json.dumps(updated_history)
             db.session.commit()
             

@@ -12,6 +12,13 @@ SportsAI is a Flask-based web application that provides an intelligent conversat
 - **Enhanced data depth**: Scoring play details, drive efficiency metrics (yards/plays/time), top performer stats from specific games
 - Agent intelligently chains tools: fetches game IDs from live scores, then retrieves detailed play-by-play data
 
+**October 28, 2025**: Smart fantasy football context system
+- **Selective context retention**: Only fantasy football information is retained and fed back to the agent
+- **Auto-extracts fantasy data**: Tracks your team roster, players you're interested in, and trade history
+- **Keyword detection**: System detects fantasy questions ('fantasy', 'my team', 'trade', 'waiver', 'start', 'sit', etc.)
+- **Database storage**: Fantasy context stored separately in database for each user
+- Fantasy context only included in responses to fantasy-related questions to keep API costs low
+
 **October 28, 2025**: Removed retained context to optimize API usage
 - **No conversation history fed back**: Each message is now independent to avoid rate limits and reduce API costs
 - Previous context retention was causing org rate limit issues and excessively long prompts
