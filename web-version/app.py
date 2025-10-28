@@ -79,12 +79,14 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 
 **Fantasy Football Questions:**
 • When user asks about fantasy, use get_fantasy_team to fetch their ESPN roster
-• FIRST TIME ONLY: If they haven't told you their team name yet, call get_fantasy_team WITHOUT team_name parameter - this shows them all teams in the league to choose from
+• CREDENTIALS: Check FANTASY FOOTBALL CONTEXT for saved ESPN credentials (espn_league_id, espn_s2, espn_swid)
+• If NO credentials saved, call get_fantasy_team anyway - it will ask them to provide their League ID
+• When user provides credentials (e.g., "My league ID is 12345678"), acknowledge and mention they're saved for future use
+• FIRST TIME: If they haven't told you their team name yet, call get_fantasy_team WITHOUT team_name parameter - this shows all teams in the league
 • AFTER SELECTION: Once they select their team, call get_fantasy_team WITH their team_name - this fetches their actual roster
-• IMPORTANT: The fantasy context will store their team_name, so use it automatically in future calls (check FANTASY FOOTBALL CONTEXT for espn_team_name)
+• IMPORTANT: The fantasy context stores their credentials and team_name for automatic use in future calls
 • This gives you their actual team roster, current matchup, standings, and player injury statuses
 • Provide personalized start/sit recommendations based on their ACTUAL roster
-• If ESPN isn't set up and user asks about fantasy, ask "Who's on your team?" to provide manual advice
 
 **"Games Today" Questions:**
 • Use the get_live_scores tool to fetch current data
@@ -437,16 +439,15 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             dict with team roster, matchups, standings, and player info
         """
         try:
-            # Use environment variables if parameters not provided
-            league_id = league_id or os.getenv('ESPN_LEAGUE_ID')
-            espn_s2 = espn_s2 or os.getenv('ESPN_S2')
-            swid = swid or os.getenv('ESPN_SWID')
+            # Credentials must be provided as parameters (stored in user's fantasy_context)
+            # Do NOT use environment variables - each user has different credentials
             
             if not league_id:
                 return {
                     'success': False,
-                    'message': 'ESPN League ID is required. Please set ESPN_LEAGUE_ID in secrets or provide it directly.',
-                    'setup_help': 'Find your League ID in your ESPN Fantasy Football league URL: https://fantasy.espn.com/football/league?leagueId=YOUR_LEAGUE_ID'
+                    'needs_credentials': True,
+                    'message': 'To connect your ESPN Fantasy team, I need your League ID.',
+                    'setup_help': 'Find your League ID in your ESPN Fantasy Football league URL: https://fantasy.espn.com/football/league?leagueId=YOUR_LEAGUE_ID\n\nJust tell me: "My league ID is 12345678" and I\'ll save it for future use.'
                 }
             
             # Initialize league connection
@@ -1271,7 +1272,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'message': 'Could not generate diagrams at this time'
             }
 
-    def chat(self, user_message: str, conversation_history: list) -> tuple:
+    def chat(self, user_message: str, conversation_history: list, fantasy_context: dict = None) -> tuple:
         """Main chat interface with tool use.
         
         Returns:
@@ -1400,10 +1401,22 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             },
             {
                 "name": "get_fantasy_team",
-                "description": "Fetches the user's ESPN Fantasy Football team roster, current matchup, and league standings. Use this when users ask about their fantasy team, roster, who to start/sit, or want personalized fantasy advice. Requires ESPN_LEAGUE_ID (and optionally ESPN_S2 and ESPN_SWID for private leagues) to be set in secrets. If team_name is not provided and user hasn't selected their team yet, this will return a list of all teams in the league for the user to choose from.",
+                "description": "Fetches the user's ESPN Fantasy Football team roster, current matchup, and league standings. Use this when users ask about their fantasy team, roster, who to start/sit, or want personalized fantasy advice. Requires the user's ESPN credentials (league_id, and optionally espn_s2/swid for private leagues) - check FANTASY FOOTBALL CONTEXT for saved credentials. If team_name is not provided and user hasn't selected their team yet, this will return a list of all teams in the league for the user to choose from.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
+                        "league_id": {
+                            "type": "string",
+                            "description": "ESPN Fantasy League ID (from FANTASY FOOTBALL CONTEXT or user-provided)"
+                        },
+                        "espn_s2": {
+                            "type": "string",
+                            "description": "ESPN S2 cookie for private leagues (from FANTASY FOOTBALL CONTEXT or user-provided, optional)"
+                        },
+                        "swid": {
+                            "type": "string",
+                            "description": "ESPN SWID cookie for private leagues (from FANTASY FOOTBALL CONTEXT or user-provided, optional)"
+                        },
                         "year": {
                             "type": "integer",
                             "description": "Season year (default 2025)",
@@ -1463,7 +1476,32 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             elif tool_name == "get_fantasy_team":
                 year = tool_input.get("year", 2025)
                 team_name = tool_input.get("team_name", None)
-                tool_result = self.get_fantasy_team(year=year, team_name=team_name)
+                
+                # Auto-inject credentials from user's stored fantasy_context
+                # This ensures each user's credentials are automatically used
+                league_id = tool_input.get("league_id", None)
+                espn_s2 = tool_input.get("espn_s2", None)
+                swid = tool_input.get("swid", None)
+                
+                # If fantasy_context provided and no credentials in tool_input, use stored credentials
+                if fantasy_context:
+                    if not league_id and fantasy_context.get('espn_league_id'):
+                        league_id = fantasy_context['espn_league_id']
+                    if not espn_s2 and fantasy_context.get('espn_s2'):
+                        espn_s2 = fantasy_context['espn_s2']
+                    if not swid and fantasy_context.get('espn_swid'):
+                        swid = fantasy_context['espn_swid']
+                    # Also auto-inject team_name if not provided
+                    if not team_name and fantasy_context.get('espn_team_name'):
+                        team_name = fantasy_context['espn_team_name']
+                
+                tool_result = self.get_fantasy_team(
+                    league_id=league_id,
+                    espn_s2=espn_s2,
+                    swid=swid,
+                    year=year,
+                    team_name=team_name
+                )
                 # Track that we used this tool
                 tool_usage_data['used_get_fantasy_team'] = True
                 tool_usage_data['fantasy_team_data'] = tool_result
@@ -1673,10 +1711,19 @@ def create_app():
                 if has_context:
                     context_message = "FANTASY FOOTBALL CONTEXT:\n"
                     
+                    # ESPN credentials (user-specific, stored in their context)
+                    if fantasy_context.get('espn_league_id'):
+                        context_message += f"ESPN Credentials (use these in get_fantasy_team calls):\n"
+                        context_message += f"  • league_id: {fantasy_context['espn_league_id']}\n"
+                        if fantasy_context.get('espn_s2'):
+                            context_message += f"  • espn_s2: {fantasy_context['espn_s2']}\n"
+                        if fantasy_context.get('espn_swid'):
+                            context_message += f"  • swid: {fantasy_context['espn_swid']}\n"
+                    
                     # ESPN roster data takes precedence if available
                     if fantasy_context.get('espn_roster'):
                         espn_team_name = fantasy_context.get('espn_team_name', 'Unknown')
-                        context_message += f"ESPN Fantasy Team: {espn_team_name}\n"
+                        context_message += f"\nESPN Fantasy Team: {espn_team_name}\n"
                         context_message += "ESPN Fantasy Roster (from live API):\n"
                         for player in fantasy_context['espn_roster']:
                             status = f" ({player['injuryStatus']})" if player.get('injuryStatus') else ""
@@ -1690,8 +1737,8 @@ def create_app():
                             standings = fantasy_context['espn_standings']
                             context_message += f"League Standing: {standings.get('wins', 0)}-{standings.get('losses', 0)}, Rank: {standings.get('rank', 'N/A')}\n"
                         
-                        # Tell AI to use this team name in future get_fantasy_team calls
-                        context_message += f"\nNOTE: When calling get_fantasy_team, use team_name='{espn_team_name}' parameter\n"
+                        # Tell AI to use stored credentials and team name
+                        context_message += f"\nNOTE: When calling get_fantasy_team, use the credentials above and team_name='{espn_team_name}'\n"
                     
                     # Manually entered team data (for users without ESPN integration)
                     if fantasy_context.get('my_team'):
@@ -1710,7 +1757,9 @@ def create_app():
                         "content": "I'll remember your fantasy football context."
                     })
             
-            response, updated_history, tool_usage = companion.chat(user_message, conversation_history)
+            # Get fantasy context as dict to pass to chat (for credential injection)
+            fantasy_context_dict = json.loads(conversation.fantasy_context) if conversation.fantasy_context else {}
+            response, updated_history, tool_usage = companion.chat(user_message, conversation_history, fantasy_context=fantasy_context_dict)
             
             # If route/play analysis was used, store the context for follow-up questions
             if tool_usage.get('used_analyze_player_routes_plays'):
@@ -1741,6 +1790,30 @@ def create_app():
             # If fantasy football question, extract and update fantasy context
             if is_fantasy_question:
                 try:
+                    # First, check if user provided ESPN credentials in their message
+                    import re
+                    fantasy_context = json.loads(conversation.fantasy_context)
+                    
+                    # Extract League ID (numbers after "league id" or "leagueId")
+                    league_id_match = re.search(r'(?:league\s*id\s*(?:is)?\s*|leagueId=)(\d+)', user_message, re.IGNORECASE)
+                    if league_id_match:
+                        fantasy_context['espn_league_id'] = league_id_match.group(1)
+                    
+                    # Extract ESPN S2 cookie (long string starting with AE)
+                    s2_match = re.search(r'(?:espn_?s2|s2)\s*(?:is|:|=)?\s*([A-Za-z0-9%+/=]{100,})', user_message, re.IGNORECASE)
+                    if s2_match:
+                        fantasy_context['espn_s2'] = s2_match.group(1)
+                    
+                    # Extract SWID (format: {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX})
+                    swid_match = re.search(r'(?:swid|SWID)\s*(?:is|:|=)?\s*(\{[A-Za-z0-9-]{36}\})', user_message, re.IGNORECASE)
+                    if swid_match:
+                        fantasy_context['espn_swid'] = swid_match.group(1)
+                    
+                    # Save if any credentials were found
+                    if league_id_match or s2_match or swid_match:
+                        conversation.fantasy_context = json.dumps(fantasy_context)
+                        db.session.commit()
+                    
                     # Ask AI to extract fantasy football information
                     extract_prompt = f"""Based on this conversation:
 User: {user_message}
