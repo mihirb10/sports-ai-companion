@@ -691,136 +691,136 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                         # Play-specific formations and movements
                         if 'play action' in name.lower():
                             # Play Action Pass - Fake handoff, then deep pass
-                            # O-line (static)
+                            # O-line (vertical formation at line of scrimmage)
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - fake handoff then dropback
-                            ax.plot(-1, 12, 'ro', markersize=12, label='QB')
-                            arrow1 = FancyArrowPatch((-1, 12), (1, 12), arrowstyle='->', mutation_scale=20, linewidth=2, color='red', linestyle='--', label='Fake')
+                            ax.plot(-3, 15, 'ro', markersize=12, label='QB')
+                            arrow1 = FancyArrowPatch((-3, 15), (1, 15), arrowstyle='->', mutation_scale=20, linewidth=2, color='red', linestyle='--', label='Fake')
                             ax.add_patch(arrow1)
-                            arrow2 = FancyArrowPatch((1, 12), (-2, 10), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='red')
+                            arrow2 = FancyArrowPatch((1, 15), (-5, 15), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='red')
                             ax.add_patch(arrow2)
                             # RB - fake receive
-                            ax.plot(0, 13, 'go', markersize=10)
+                            ax.plot(-2, 15, 'go', markersize=10)
                             # WR deep routes
-                            ax.plot(-1, 8, 'bo', markersize=9)
-                            arrow3 = FancyArrowPatch((-1, 8), (18, 6), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 8, 'bo', markersize=9)
+                            arrow3 = FancyArrowPatch((0, 8), (18, 6), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow3)
-                            ax.plot(-1, 22, 'bo', markersize=9)
-                            arrow4 = FancyArrowPatch((-1, 22), (18, 24), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 22, 'bo', markersize=9)
+                            arrow4 = FancyArrowPatch((0, 22), (18, 24), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow4)
                             
                         elif 'bootleg' in name.lower():
                             # Bootleg - QB rolls out to sideline
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - rolls out
-                            ax.plot(-1, 12, 'ro', markersize=12)
-                            arrow1 = FancyArrowPatch((-1, 12), (8, 7), arrowstyle='->', mutation_scale=20, linewidth=3, color='red')
+                            ax.plot(-3, 15, 'ro', markersize=12)
+                            arrow1 = FancyArrowPatch((-3, 15), (8, 7), arrowstyle='->', mutation_scale=20, linewidth=3, color='red')
                             ax.add_patch(arrow1)
                             # RB - fake opposite
-                            ax.plot(0, 13, 'go', markersize=10)
-                            arrow2 = FancyArrowPatch((0, 13), (3, 22), arrowstyle='->', mutation_scale=18, linewidth=2, color='green', linestyle='--')
+                            ax.plot(-2, 15, 'go', markersize=10)
+                            arrow2 = FancyArrowPatch((-2, 15), (3, 22), arrowstyle='->', mutation_scale=18, linewidth=2, color='green', linestyle='--')
                             ax.add_patch(arrow2)
                             # TE drags across
-                            ax.plot(-1, 17, 'co', markersize=9)
-                            arrow3 = FancyArrowPatch((-1, 17), (10, 12), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='cyan')
+                            ax.plot(0, 19, 'co', markersize=9)
+                            arrow3 = FancyArrowPatch((0, 19), (10, 12), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='cyan')
                             ax.add_patch(arrow3)
                             
                         elif 'rpo' in name.lower():
                             # RPO - Run-Pass Option
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - reads defender
-                            ax.plot(-1, 12, 'ro', markersize=12)
-                            ax.text(-1, 10, 'READ', fontsize=8, ha='center', fontweight='bold', color='red')
+                            ax.plot(-3, 15, 'ro', markersize=12)
+                            ax.text(-3, 12, 'READ', fontsize=8, ha='center', fontweight='bold', color='red')
                             # RB - run option
-                            ax.plot(0, 13, 'go', markersize=10)
-                            arrow1 = FancyArrowPatch((0, 13), (8, 13), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='green', label='Run Option')
+                            ax.plot(-2, 15, 'go', markersize=10)
+                            arrow1 = FancyArrowPatch((-2, 15), (8, 15), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='green', label='Run Option')
                             ax.add_patch(arrow1)
                             # WR - slant option
-                            ax.plot(-1, 8, 'bo', markersize=9)
-                            arrow2 = FancyArrowPatch((-1, 8), (6, 13), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue', linestyle='--', label='Pass Option')
+                            ax.plot(0, 8, 'bo', markersize=9)
+                            arrow2 = FancyArrowPatch((0, 8), (6, 13), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue', linestyle='--', label='Pass Option')
                             ax.add_patch(arrow2)
                             
                         elif 'screen' in name.lower():
                             # Screen Pass - Blockers ahead
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - drops back
-                            ax.plot(-1, 12, 'ro', markersize=12)
-                            arrow1 = FancyArrowPatch((-1, 12), (-4, 10), arrowstyle='->', mutation_scale=20, linewidth=2, color='red')
+                            ax.plot(-3, 15, 'ro', markersize=12)
+                            arrow1 = FancyArrowPatch((-3, 15), (-6, 15), arrowstyle='->', mutation_scale=20, linewidth=2, color='red')
                             ax.add_patch(arrow1)
                             # RB - releases for screen
-                            ax.plot(0, 13, 'go', markersize=10)
-                            arrow2 = FancyArrowPatch((0, 13), (8, 13), arrowstyle='->', mutation_scale=20, linewidth=3, color='green')
+                            ax.plot(-2, 15, 'go', markersize=10)
+                            arrow2 = FancyArrowPatch((-2, 15), (8, 15), arrowstyle='->', mutation_scale=20, linewidth=3, color='green')
                             ax.add_patch(arrow2)
                             # O-line releases to block
-                            arrow3 = FancyArrowPatch((1, 15), (5, 13), arrowstyle='->', mutation_scale=15, linewidth=2, color='black', linestyle='--')
+                            arrow3 = FancyArrowPatch((0, 13.5), (5, 15), arrowstyle='->', mutation_scale=15, linewidth=2, color='black', linestyle='--')
                             ax.add_patch(arrow3)
-                            arrow4 = FancyArrowPatch((2.5, 15), (7, 13), arrowstyle='->', mutation_scale=15, linewidth=2, color='black', linestyle='--')
+                            arrow4 = FancyArrowPatch((0, 16.5), (7, 15), arrowstyle='->', mutation_scale=15, linewidth=2, color='black', linestyle='--')
                             ax.add_patch(arrow4)
                             
                         elif 'slant' in name.lower():
                             # Quick Slant Package
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - quick release
-                            ax.plot(-1, 12, 'ro', markersize=12)
+                            ax.plot(-3, 15, 'ro', markersize=12)
                             # WRs - slant routes
-                            ax.plot(-1, 8, 'bo', markersize=9)
-                            arrow1 = FancyArrowPatch((-1, 8), (6, 13), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 8, 'bo', markersize=9)
+                            arrow1 = FancyArrowPatch((0, 8), (6, 13), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow1)
-                            ax.plot(-1, 22, 'bo', markersize=9)
-                            arrow2 = FancyArrowPatch((-1, 22), (6, 17), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 22, 'bo', markersize=9)
+                            arrow2 = FancyArrowPatch((0, 22), (6, 17), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow2)
                             
                         elif 'deep' in name.lower() or 'vertical' in name.lower():
                             # Deep Shot/Vertical
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - deep drop
-                            ax.plot(-1, 12, 'ro', markersize=12)
+                            ax.plot(-4, 15, 'ro', markersize=12)
                             # WRs - go routes
-                            ax.plot(-1, 6, 'bo', markersize=9)
-                            arrow1 = FancyArrowPatch((-1, 6), (20, 3), arrowstyle='->', mutation_scale=20, linewidth=3, color='blue')
+                            ax.plot(0, 6, 'bo', markersize=9)
+                            arrow1 = FancyArrowPatch((0, 6), (20, 3), arrowstyle='->', mutation_scale=20, linewidth=3, color='blue')
                             ax.add_patch(arrow1)
-                            ax.plot(-1, 24, 'bo', markersize=9)
-                            arrow2 = FancyArrowPatch((-1, 24), (20, 27), arrowstyle='->', mutation_scale=20, linewidth=3, color='blue')
+                            ax.plot(0, 24, 'bo', markersize=9)
+                            arrow2 = FancyArrowPatch((0, 24), (20, 27), arrowstyle='->', mutation_scale=20, linewidth=3, color='blue')
                             ax.add_patch(arrow2)
                             
                         elif 'rollout' in name.lower():
                             # Designed Rollout
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - rolls out
-                            ax.plot(-1, 12, 'ro', markersize=12)
-                            arrow1 = FancyArrowPatch((-1, 12), (6, 9), arrowstyle='->', mutation_scale=20, linewidth=3, color='red')
+                            ax.plot(-3, 15, 'ro', markersize=12)
+                            arrow1 = FancyArrowPatch((-3, 15), (6, 9), arrowstyle='->', mutation_scale=20, linewidth=3, color='red')
                             ax.add_patch(arrow1)
                             # WRs - crossing routes
-                            ax.plot(-1, 8, 'bo', markersize=9)
-                            arrow2 = FancyArrowPatch((-1, 8), (10, 18), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 8, 'bo', markersize=9)
+                            arrow2 = FancyArrowPatch((0, 8), (10, 18), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow2)
                             
                         elif 'draw' in name.lower():
                             # Shotgun Draw
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - hands off
-                            ax.plot(-1, 9, 'ro', markersize=12)
+                            ax.plot(-4, 15, 'ro', markersize=12)
                             # RB - delayed run
-                            ax.plot(-1, 12, 'go', markersize=10)
-                            arrow1 = FancyArrowPatch((-1, 12), (12, 15), arrowstyle='->', mutation_scale=20, linewidth=3, color='green')
+                            ax.plot(-3, 15, 'go', markersize=10)
+                            arrow1 = FancyArrowPatch((-3, 15), (12, 15), arrowstyle='->', mutation_scale=20, linewidth=3, color='green')
                             ax.add_patch(arrow1)
                             
                         elif 'empty' in name.lower():
                             # Empty Set - all receivers spread
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - shotgun
-                            ax.plot(-1, 8, 'ro', markersize=12)
+                            ax.plot(-4, 15, 'ro', markersize=12)
                             # 5 receivers spread
-                            positions = [(-1, 3), (-1, 12), (-1, 18), (-1, 23), (-1, 27)]
+                            positions = [(0, 3), (0, 9), (0, 15), (0, 21), (0, 27)]
                             for i, pos in enumerate(positions):
                                 ax.plot(pos[0], pos[1], 'bo', markersize=9)
                                 if i % 2 == 0:
@@ -832,26 +832,26 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                         elif 'two-minute' in name.lower() or 'drill' in name.lower():
                             # Two-Minute Drill - hurry up
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
                             # QB - quick snap
-                            ax.plot(-1, 10, 'ro', markersize=12)
-                            ax.text(-1, 7, 'HURRY!', fontsize=9, ha='center', fontweight='bold', color='red')
+                            ax.plot(-3, 15, 'ro', markersize=12)
+                            ax.text(-3, 12, 'HURRY!', fontsize=9, ha='center', fontweight='bold', color='red')
                             # Quick routes
-                            ax.plot(-1, 5, 'bo', markersize=9)
-                            arrow1 = FancyArrowPatch((-1, 5), (8, 5), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 7, 'bo', markersize=9)
+                            arrow1 = FancyArrowPatch((0, 7), (8, 7), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow1)
-                            ax.plot(-1, 20, 'bo', markersize=9)
-                            arrow2 = FancyArrowPatch((-1, 20), (8, 20), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
+                            ax.plot(0, 23, 'bo', markersize=9)
+                            arrow2 = FancyArrowPatch((0, 23), (8, 23), arrowstyle='->', mutation_scale=20, linewidth=2.5, color='blue')
                             ax.add_patch(arrow2)
                         
                         else:
                             # Generic play formation
                             for i in range(5):
-                                ax.plot(-1 + i * 1.5, 15, 'ko', markersize=8)
-                            ax.plot(-1, 12, 'ro', markersize=12)
-                            ax.plot(0, 13, 'go', markersize=10)
-                            ax.plot(-1, 8, 'bo', markersize=9)
-                            ax.plot(-1, 22, 'bo', markersize=9)
+                                ax.plot(0, 12 + i * 1.5, 'ko', markersize=8)
+                            ax.plot(-3, 15, 'ro', markersize=12)
+                            ax.plot(-2, 15, 'go', markersize=10)
+                            ax.plot(0, 8, 'bo', markersize=9)
+                            ax.plot(0, 22, 'bo', markersize=9)
                         
                         ax.set_title(f'{name}', fontsize=14, fontweight='bold', pad=20)
                     
