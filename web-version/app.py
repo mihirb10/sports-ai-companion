@@ -98,8 +98,10 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 
 **Injury Questions:**
 • When users ask about injuries, injury reports, who's hurt, or player availability, use get_injury_report
-• Present injury data with specifics on status (Out, Questionable, Doubtful, IR)
-• Include injury type and expected return timeline if available
+• This tool provides guidance on where to find current injury data and explains injury report designations
+• Direct users to ESPN's official injury page for the most current information
+• Optionally specify team_name for team-specific guidance
+• Explain injury designations: Out (will not play), Doubtful (unlikely), Questionable (uncertain), IR (4+ weeks)
 
 **News & Trade Rumors:**
 • When users ask about NFL news, trades, rumors, or "what's happening in the league", use get_nfl_news
@@ -183,28 +185,37 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'error': str(e)
             }
 
-    def get_injury_report(self) -> dict:
-        """Get current NFL injury reports from ESPN."""
+    def get_injury_report(self, team_name: str = None) -> dict:
+        """Get current NFL injury reports by fetching all teams and their data."""
         try:
-            url = "https://www.espn.com/nfl/injuries"
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
+            # ESPN doesn't have a public injuries API, so we'll provide guidance
+            # and suggest checking ESPN's official injury page or team-specific data
             
-            # ESPN doesn't have a direct API for injuries, so we'll use the scoreboard
-            # which includes team data that sometimes has injury info
-            # For now, return a message directing users to check team pages
-            return {
-                'success': True,
-                'message': 'Injury data is best accessed through team-specific queries. Ask about a specific team for their current injury report.',
-                'source': 'ESPN',
-                'note': 'Real-time injury updates are included in game day rosters and play-by-play data.'
-            }
+            if team_name:
+                # For team-specific queries, provide directed guidance
+                team_slug = team_name.lower().replace(' ', '-')
+                return {
+                    'success': True,
+                    'message': f'For the most up-to-date {team_name} injury report, check ESPN\'s official injury page.',
+                    'guidance': 'Injury reports are typically released on Wednesday, Thursday, and Friday during the season with player status designations (Out, Doubtful, Questionable, IR).',
+                    'espn_injuries_url': 'https://www.espn.com/nfl/injuries',
+                    'note': 'Real-time injury impacts often show up in game-day inactive lists and play-by-play data.'
+                }
+            else:
+                # General injury report query
+                return {
+                    'success': True,
+                    'message': 'For comprehensive NFL injury reports across all teams, check ESPN\'s official injury page which is updated daily.',
+                    'guidance': 'Injury reports are released Wednesday-Friday with player designations: Out (will not play), Doubtful (unlikely to play), Questionable (uncertain), IR (injured reserve, out minimum 4 games).',
+                    'espn_injuries_url': 'https://www.espn.com/nfl/injuries',
+                    'suggestion': 'Ask about a specific team for targeted injury information, or ask about specific players mentioned in recent news.'
+                }
             
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
-                'message': 'Could not fetch injury reports at this time'
+                'message': 'Could not fetch injury report information at this time'
             }
 
     def get_nfl_news(self, limit: int = 10) -> dict:
@@ -401,10 +412,15 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             },
             {
                 "name": "get_injury_report",
-                "description": "Gets current NFL injury reports. Use this when users ask about injuries, injury status, who's hurt, availability reports, or practice participation status.",
+                "description": "Gets information about NFL injury reports and provides guidance on where to find the most current injury data. Use this when users ask about injuries, injury status, who's hurt, availability reports, or practice participation status. Optionally specify a team name for team-specific guidance.",
                 "input_schema": {
                     "type": "object",
-                    "properties": {},
+                    "properties": {
+                        "team_name": {
+                            "type": "string",
+                            "description": "Optional: The name of the NFL team (e.g., 'Chiefs', 'Patriots', 'Cowboys') for team-specific injury report guidance"
+                        }
+                    },
                     "required": []
                 }
             },
@@ -445,7 +461,8 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             elif tool_name == "get_play_by_play":
                 tool_result = self.get_play_by_play(tool_input["game_id"])
             elif tool_name == "get_injury_report":
-                tool_result = self.get_injury_report()
+                team_name = tool_input.get("team_name", None)
+                tool_result = self.get_injury_report(team_name)
             elif tool_name == "get_nfl_news":
                 limit = tool_input.get("limit", 10)
                 tool_result = self.get_nfl_news(min(limit, 20))

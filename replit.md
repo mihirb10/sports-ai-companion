@@ -6,6 +6,14 @@ SportsAI is a Flask-based web application that provides an intelligent conversat
 
 ## Recent Changes
 
+**October 28, 2025**: Injury reports & NFL news/trade rumors integration
+- **Added get_injury_report() tool**: Provides guidance on injury reports and player availability status with links to official ESPN injury page
+- **Added get_nfl_news() tool**: Fetches latest NFL news and trade rumors from RSS feeds (NFL Trade Rumors + Pro Football Rumors)
+- **Enhanced AI guidance**: System prompt updated to handle injury and news questions with stats-focused responses
+- News feed returns up to 20 recent headlines with summaries and source links
+- Injury tool explains status designations (Out, Doubtful, Questionable, IR) and directs users to current data sources
+- Note: ESPN's public API doesn't provide injury data, so the tool provides helpful guidance instead
+
 **October 28, 2025**: Play-by-play data integration + game analysis capabilities
 - **Added ESPN play-by-play API**: Agent can now access detailed game data including scoring plays, drive summaries, box scores, and player stats
 - **New game analysis features**: Users can ask "What happened in the Chiefs game?" and get comprehensive stat-driven recaps
