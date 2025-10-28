@@ -6,6 +6,13 @@ SportsAI is a Flask-based web application that provides an intelligent conversat
 
 ## Recent Changes
 
+**October 28, 2025**: Enhanced chat UI with loading states and streaming responses
+- **Loading indicator**: Animated loading dots appear in a message bubble below user's prompt while waiting for AI response
+- **Streaming text display**: Responses now appear word-by-word like Claude/Gemini for smooth, engaging UX
+- **Smart speed adjustment**: Longer responses stream faster (15ms/word) vs shorter responses (30ms/word) for optimal reading experience
+- **Auto-scrolling**: Chat window automatically scrolls during streaming to keep new text visible
+- Modern three-dot loading animation with smooth bounce effect
+
 **October 28, 2025**: Proactive fantasy injury monitoring
 - **Automatic injury alerts**: At session start (max once per day), the app proactively checks for injury news about players on user's fantasy roster
 - **Smart news scanning**: Searches NFL news feeds for injury-related headlines mentioning fantasy team players
