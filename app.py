@@ -5,6 +5,7 @@ Flask-based web interface with chat UI
 """
 
 from flask import Flask, render_template, request, jsonify, session
+from flask_cors import CORS
 import anthropic
 import requests
 import json
@@ -14,6 +15,7 @@ import secrets
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(16))
+CORS(app, supports_credentials=True)
 
 class NFLCompanion:
     def __init__(self, anthropic_api_key: str):
