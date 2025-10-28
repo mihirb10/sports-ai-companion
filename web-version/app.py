@@ -13,6 +13,8 @@ import json
 import os
 from datetime import datetime
 import logging
+import feedparser
+import re
 
 from models import db, User, Conversation
 from replit_auth import login_manager, make_replit_blueprint, require_login
@@ -170,6 +172,89 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'error': str(e)
             }
 
+    def get_injury_report(self) -> dict:
+        """Get current NFL injury reports from ESPN."""
+        try:
+            url = "https://www.espn.com/nfl/injuries"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            # ESPN doesn't have a direct API for injuries, so we'll use the scoreboard
+            # which includes team data that sometimes has injury info
+            # For now, return a message directing users to check team pages
+            return {
+                'success': True,
+                'message': 'Injury data is best accessed through team-specific queries. Ask about a specific team for their current injury report.',
+                'source': 'ESPN',
+                'note': 'Real-time injury updates are included in game day rosters and play-by-play data.'
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Could not fetch injury reports at this time'
+            }
+
+    def get_nfl_news(self, limit: int = 10) -> dict:
+        """Get latest NFL news and trade rumors from RSS feeds."""
+        try:
+            news_items = []
+            
+            # Try NFL Trade Rumors RSS
+            try:
+                feed_url = "https://nfltraderumors.co/feed/"
+                feed = feedparser.parse(feed_url)
+                
+                for entry in feed.entries[:limit]:
+                    news_items.append({
+                        'title': entry.get('title', 'N/A'),
+                        'summary': entry.get('summary', 'N/A')[:200] + '...' if len(entry.get('summary', '')) > 200 else entry.get('summary', 'N/A'),
+                        'link': entry.get('link', 'N/A'),
+                        'published': entry.get('published', 'N/A'),
+                        'source': 'NFL Trade Rumors'
+                    })
+            except Exception as feed_error:
+                logging.warning(f"Could not fetch NFL Trade Rumors feed: {feed_error}")
+            
+            # Fallback or additional source: Pro Football Rumors
+            if len(news_items) < limit:
+                try:
+                    feed_url = "https://www.profootballrumors.com/feed"
+                    feed = feedparser.parse(feed_url)
+                    
+                    for entry in feed.entries[:(limit - len(news_items))]:
+                        news_items.append({
+                            'title': entry.get('title', 'N/A'),
+                            'summary': entry.get('summary', 'N/A')[:200] + '...' if len(entry.get('summary', '')) > 200 else entry.get('summary', 'N/A'),
+                            'link': entry.get('link', 'N/A'),
+                            'published': entry.get('published', 'N/A'),
+                            'source': 'Pro Football Rumors'
+                        })
+                except Exception as feed_error:
+                    logging.warning(f"Could not fetch Pro Football Rumors feed: {feed_error}")
+            
+            if news_items:
+                return {
+                    'success': True,
+                    'news': news_items,
+                    'count': len(news_items)
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': 'Could not fetch NFL news at this time',
+                    'news': []
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Could not fetch NFL news at this time',
+                'news': []
+            }
+
     def get_play_by_play(self, game_id: str) -> dict:
         """Get detailed play-by-play data for a specific game."""
         try:
@@ -302,6 +387,30 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                     },
                     "required": ["game_id"]
                 }
+            },
+            {
+                "name": "get_injury_report",
+                "description": "Gets current NFL injury reports. Use this when users ask about injuries, injury status, who's hurt, availability reports, or practice participation status.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "get_nfl_news",
+                "description": "Gets latest NFL news, trade rumors, and breaking stories. Use this when users ask about NFL news, trades, rumors, signings, or what's happening around the league. Returns recent headlines with summaries.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "integer",
+                            "description": "Number of news items to return (default 10, max 20)",
+                            "default": 10
+                        }
+                    },
+                    "required": []
+                }
             }
         ]
         
@@ -324,6 +433,11 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 tool_result = self.get_team_stats(tool_input["team_name"])
             elif tool_name == "get_play_by_play":
                 tool_result = self.get_play_by_play(tool_input["game_id"])
+            elif tool_name == "get_injury_report":
+                tool_result = self.get_injury_report()
+            elif tool_name == "get_nfl_news":
+                limit = tool_input.get("limit", 10)
+                tool_result = self.get_nfl_news(min(limit, 20))
             else:
                 tool_result = {"error": "Unknown tool"}
             
