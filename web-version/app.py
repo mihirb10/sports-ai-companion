@@ -650,6 +650,37 @@ def create_app():
             # Get conversation record
             conversation = get_or_create_conversation(current_user.id)
             
+            # Check for proactive injury updates (once per day, at session start)
+            injury_update_message = None
+            fantasy_context = json.loads(conversation.fantasy_context)
+            
+            # Check if we should run injury check
+            should_check_injuries = False
+            if conversation.last_injury_check is None:
+                # Never checked before
+                should_check_injuries = True
+            else:
+                # Check if it's been more than 24 hours
+                hours_since_check = (datetime.now() - conversation.last_injury_check).total_seconds() / 3600
+                should_check_injuries = hours_since_check >= 24
+            
+            # Only check if user has fantasy team data
+            has_fantasy_data = bool(fantasy_context.get('my_team') or fantasy_context.get('interested_players'))
+            
+            if should_check_injuries and has_fantasy_data:
+                injury_check_result = companion.check_fantasy_team_injuries(fantasy_context)
+                
+                if injury_check_result.get('success') and injury_check_result.get('updates'):
+                    # Format injury update message
+                    injury_update_message = "By the way - here's an injury update for your fantasy team:\n\n"
+                    for update in injury_check_result['updates']:
+                        injury_update_message += f"• **{update['player']}**: {update['headline']}\n"
+                    injury_update_message += "\n"
+                
+                # Update last injury check timestamp
+                conversation.last_injury_check = datetime.now()
+                db.session.commit()
+            
             # Check if this is a fantasy football question
             fantasy_keywords = ['fantasy', 'my team', 'my roster', 'trade', 'waiver', 'start', 'sit', 'bench', 'draft']
             is_fantasy_question = any(keyword in user_message.lower() for keyword in fantasy_keywords)
@@ -739,8 +770,13 @@ Return ONLY the JSON, nothing else."""
             conversation.history = json.dumps(updated_history)
             db.session.commit()
             
+            # Prepend injury update message if available
+            final_response = response
+            if injury_update_message:
+                final_response = injury_update_message + response
+            
             return jsonify({
-                'response': response,
+                'response': final_response,
                 'success': True
             })
         
