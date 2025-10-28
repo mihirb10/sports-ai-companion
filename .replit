@@ -39,6 +39,10 @@ externalPort = 80
 localPort = 37875
 externalPort = 3000
 
+[[ports]]
+localPort = 39091
+externalPort = 3001
+
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd web-version && gunicorn --bind=0.0.0.0:5000 --reuse-port app:app"]
