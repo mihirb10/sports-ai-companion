@@ -30,6 +30,22 @@ The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy O
 
 Built with Vanilla JavaScript, HTML5, and CSS3, the frontend follows a single-page application pattern. It features a `login.html` for unauthenticated access and an `index.html` for the chat interface. The UI boasts a modern dark theme (`#1a1a1a` primary background) inspired by Claude/Gemini, with a full-height chat container, message bubbles (user 👤, assistant 🏈), an auto-expanding input box, and smooth animations.
 
+### Progressive Web App (PWA) Features
+
+SportsAI is implemented as a Progressive Web App, enabling installation on mobile devices with native app-like behavior:
+- **Custom App Icon**: Professional football-themed icon (192×192, 512×512, 180×180 for iOS)
+- **Manifest Configuration**: Full PWA manifest (`static/manifest.json`) with app metadata, theme colors, and installation shortcuts
+- **Service Worker**: Offline support with intelligent caching strategy (`static/sw.js`) for core assets
+- **Install Button**: Custom "Install App" button appears in the header when PWA installation is available
+- **Cross-Platform Support**: Works on Android (Chrome), iOS (Safari), and desktop browsers
+- **Standalone Mode**: Opens full-screen without browser UI when installed
+- **Offline Capability**: Cached assets allow basic functionality without internet connection
+
+Installation methods:
+1. **Automatic**: Custom "Install App" button in header (when available)
+2. **Manual Android**: Chrome menu → "Install app" or "Add to Home Screen"
+3. **Manual iOS**: Safari Share → "Add to Home Screen"
+
 ### Backend Architecture
 
 The backend is a Flask application utilizing an application-factory pattern. Core components include:

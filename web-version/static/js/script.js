@@ -267,3 +267,43 @@ document.addEventListener('keydown', (e) => {
         closeLightbox();
     }
 });
+
+// PWA Install functionality
+let deferredPrompt;
+const installButton = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    if (installButton) {
+        installButton.style.display = 'flex';
+    }
+});
+
+if (installButton) {
+    installButton.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            alert('To install SportsAI:\n\n• Android: Tap menu (⋮) → "Install app" or "Add to Home Screen"\n• iOS: Tap Share (□↑) → "Add to Home Screen"');
+            return;
+        }
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+            console.log('PWA installed');
+        }
+        
+        deferredPrompt = null;
+        installButton.style.display = 'none';
+    });
+}
+
+window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
+    if (installButton) {
+        installButton.style.display = 'none';
+    }
+    deferredPrompt = null;
+});

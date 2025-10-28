@@ -80,6 +80,36 @@ body {
     color: var(--text-primary);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.install-btn {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.install-btn:hover {
+    background: #4752c4;
+    transform: translateY(-1px);
+}
+
+.install-btn svg {
+    flex-shrink: 0;
+}
+
 .logout-btn {
     background: transparent;
     border: 1px solid var(--border);
