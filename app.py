@@ -166,10 +166,25 @@ Engage naturally - ask follow-up questions, share interesting observations, and 
             else:
                 tool_result = {"error": "Unknown tool"}
             
-            # Add to history
+            # Add to history - convert content blocks to serializable format
+            serialized_content = []
+            for block in response.content:
+                if block.type == "text":
+                    serialized_content.append({
+                        "type": "text",
+                        "text": block.text
+                    })
+                elif block.type == "tool_use":
+                    serialized_content.append({
+                        "type": "tool_use",
+                        "id": block.id,
+                        "name": block.name,
+                        "input": block.input
+                    })
+
             conversation_history.append({
                 "role": "assistant",
-                "content": response.content
+                "content": serialized_content
             })
             
             conversation_history.append({
