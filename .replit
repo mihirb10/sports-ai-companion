@@ -40,4 +40,5 @@ localPort = 37875
 externalPort = 3000
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd web-version && gunicorn --bind=0.0.0.0:5000 --reuse-port app:app"]
