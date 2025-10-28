@@ -4,6 +4,11 @@
 
 SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with interactive visual diagrams (displayed as thumbnail galleries with fullscreen lightbox viewing), proactive fantasy injury monitoring, integration of NFL news and injury reports, and detailed game analysis using play-by-play data. Route/play analysis covers the entire current season (9 games) by default. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
 
+**Visual Diagrams** are shown automatically when users:
+- Ask what a specific route or play is (e.g., "What's a post route?")
+- Ask about a play that just happened in a live game
+- Request play/route recommendations for strategy advice
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
