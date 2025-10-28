@@ -126,39 +126,48 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 • Each diagram shows the route pattern or play formation visually
 • Note: Route/play data is simulated based on typical NFL patterns since granular All-22 data isn't publicly available
 
-**Visual Diagrams - Show Proactively in These Scenarios:**
+**Visual Diagrams - MANDATORY in These Scenarios:**
+
+**CRITICAL: You MUST call generate_route_play_diagrams tool - DO NOT make up filenames!**
+
 1. When users ask "What is a [route/play name]?" (e.g., "What's a post route?", "What's a bootleg?")
-   → Explain the route/play with stats/context
-   → IMMEDIATELY use generate_route_play_diagrams with the correct diagram_type:
-     • If it's a WR/TE route (Post, Slant, Corner, etc.) → use diagram_type='route'
-     • If it's a QB play (Bootleg, Play Action, RPO, etc.) → use diagram_type='play'
-   → Include the diagram in your response without asking first
+   → First describe it with stats
+   → Then CALL generate_route_play_diagrams tool
+   → Use correct diagram_type: 'route' for WR/TE routes, 'play' for QB plays
+   → Include the returned diagram URL immediately
 
-2. When users ask about a specific play in a live game (e.g., "What was that play?", "What route did he just run?")
-   → Describe the play based on play-by-play data if available
-   → IMMEDIATELY use generate_route_play_diagrams to show what that route/play looks like
-   → Use diagram_type='route' for WR/TE routes, diagram_type='play' for QB plays
-   → Include the diagram in your response without asking first
+2. When users ask for recommendations (e.g., "What route beats zone?", "What play should I run?")
+   → Provide EXACTLY 3 recommendations
+   → CALL generate_route_play_diagrams with ALL 3 names at once
+   → Format your response with diagrams INLINE:
+   
+   **1. [NAME]**
+   ![Name](url_from_tool)
+   • Stats and why it works
+   
+   **2. [NAME]**  
+   ![Name](url_from_tool)
+   • Stats and why it works
+   
+   **3. [NAME]**
+   ![Name](url_from_tool)
+   • Stats and why it works
 
-3. When users ask for play/route recommendations (e.g., "What play should I run?", "What route beats cover 2?")
-   → Provide EXACTLY 3 tactical recommendations with stats and success rates
-   → IMMEDIATELY use generate_route_play_diagrams to show all 3 recommendations
-   → IMPORTANT: Understand the difference:
-     • "What PLAY should I run?" → Full play diagrams (diagram_type='play') showing QB, RB, OL, WRs
-     • "What ROUTE should I run?" → Route diagrams (diagram_type='route') showing just QB and WR
-   → Include diagrams in your response without asking first
-   → Explain WHY these work against specific defenses with percentages
-
-**CRITICAL: Route vs Play Diagram Types**
-• ROUTES (diagram_type='route'): Individual receiver patterns - shows QB + WR only
+**Diagram Types:**
+• ROUTES (diagram_type='route'): Individual receiver patterns - QB + WR only
   Examples: Slant, Post, Corner, Go, Out, Dig, Crossing, Hitch, Wheel, Comeback
-• PLAYS (diagram_type='play'): Full offensive formations - shows QB, RB, OL (5 linemen), WRs
+• PLAYS (diagram_type='play'): Full offensive formations - QB, RB, OL (5 linemen), WRs
   Examples: Bootleg, Play Action Pass, RPO, Screen Pass, Shotgun Draw, Empty Set, Two-Minute Drill
+• COVERAGES (diagram_type='coverage'): Defensive formations - shows defensive backs and coverage zones
+  Examples: Cover 2, Cover 3, Cover 4, Man Coverage, Cover 1, Cover 6
 
-In all scenarios, showing the visual diagram makes your explanation clearer and more valuable!
+**Season Context:**
+• Current season is 2025 (not 2024)
+• When users ask about "this season" or don't specify a timeframe, refer to the 2025 season
+• Season to date: 2025 NFL season (9 games played)
 
 Example good response:
-"📊 Patrick Mahomes 2024 Stats:
+"📊 Patrick Mahomes 2025 Stats (9 games):
 • 4,183 yards (3rd in NFL)
 • 67.5% completion (8th)
 • 32 TDs / 11 INTs (2.9:1 ratio)
@@ -886,6 +895,124 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                         
                         ax.set_title(f'{name}', fontsize=14, fontweight='bold', pad=20)
                     
+                    elif diagram_type == 'coverage':
+                        # Draw defensive coverage diagram
+                        from matplotlib.patches import Rectangle, Arc
+                        
+                        # Line of scrimmage
+                        ax.plot([0, 0], [0, 30], 'k--', linewidth=2, alpha=0.5)
+                        
+                        # Yard markers  
+                        for y in [5, 10, 15, 20]:
+                            ax.plot([y, y], [0, 30], 'gray', linewidth=0.5, alpha=0.2)
+                            ax.text(y, -1, f'{y}y', fontsize=8, ha='center', color='gray')
+                        
+                        # Coverage-specific formations
+                        if 'cover 2' in name.lower() or 'cover2' in name.lower():
+                            # Cover 2 - Two deep safeties
+                            ax.plot(15, 10, 'r^', markersize=14)
+                            ax.text(15, 8, 'S', fontsize=10, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 20, 'r^', markersize=14)
+                            ax.text(15, 22, 'S', fontsize=10, ha='center', fontweight='bold', color='red')
+                            # CBs on outside
+                            ax.plot(5, 5, 'r^', markersize=12)
+                            ax.text(5, 3, 'CB', fontsize=9, ha='center', color='red')
+                            ax.plot(5, 25, 'r^', markersize=12)
+                            ax.text(5, 27, 'CB', fontsize=9, ha='center', color='red')
+                            # LBs underneath
+                            for i, y_pos in enumerate([9, 15, 21]):
+                                ax.plot(3, y_pos, 'r^', markersize=10)
+                                ax.text(3, y_pos - 1.5, 'LB', fontsize=8, ha='center', color='red')
+                            # Deep zones
+                            deep_zone1 = Rectangle((10, 0), 15, 15, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            deep_zone2 = Rectangle((10, 15), 15, 15, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            ax.add_patch(deep_zone1)
+                            ax.add_patch(deep_zone2)
+                        
+                        elif 'cover 3' in name.lower() or 'cover3' in name.lower():
+                            # Cover 3 - Three deep zones
+                            # Deep defenders
+                            ax.plot(15, 7.5, 'r^', markersize=14)
+                            ax.text(15, 5.5, 'CB', fontsize=10, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 15, 'r^', markersize=14)
+                            ax.text(15, 13, 'S', fontsize=10, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 22.5, 'r^', markersize=14)
+                            ax.text(15, 24.5, 'CB', fontsize=10, ha='center', fontweight='bold', color='red')
+                            # LBs underneath
+                            for i, y_pos in enumerate([9, 15, 21]):
+                                ax.plot(4, y_pos, 'r^', markersize=10)
+                            # Deep thirds
+                            third1 = Rectangle((10, 0), 15, 10, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            third2 = Rectangle((10, 10), 15, 10, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            third3 = Rectangle((10, 20), 15, 10, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            ax.add_patch(third1)
+                            ax.add_patch(third2)
+                            ax.add_patch(third3)
+                        
+                        elif 'cover 4' in name.lower() or 'cover4' in name.lower() or 'quarters' in name.lower():
+                            # Cover 4 / Quarters - Four deep zones
+                            ax.plot(15, 6, 'r^', markersize=14)
+                            ax.text(15, 4, 'CB', fontsize=9, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 12, 'r^', markersize=14)
+                            ax.text(15, 10, 'S', fontsize=9, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 18, 'r^', markersize=14)
+                            ax.text(15, 16, 'S', fontsize=9, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 24, 'r^', markersize=14)
+                            ax.text(15, 26, 'CB', fontsize=9, ha='center', fontweight='bold', color='red')
+                            # LBs
+                            for y_pos in [10, 15, 20]:
+                                ax.plot(4, y_pos, 'r^', markersize=10)
+                            # Four quarters
+                            q1 = Rectangle((10, 0), 15, 7.5, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            q2 = Rectangle((10, 7.5), 15, 7.5, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            q3 = Rectangle((10, 15), 15, 7.5, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            q4 = Rectangle((10, 22.5), 15, 7.5, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            ax.add_patch(q1)
+                            ax.add_patch(q2)
+                            ax.add_patch(q3)
+                            ax.add_patch(q4)
+                        
+                        elif 'man' in name.lower() or 'cover 1' in name.lower() or 'cover1' in name.lower():
+                            # Man Coverage / Cover 1
+                            # 1 deep safety
+                            ax.plot(15, 15, 'r^', markersize=15)
+                            ax.text(15, 13, 'FS', fontsize=11, ha='center', fontweight='bold', color='red')
+                            # CBs in man
+                            ax.plot(0, 8, 'r^', markersize=12)
+                            ax.text(0, 6, 'CB', fontsize=9, ha='center', color='red')
+                            ax.plot(0, 22, 'r^', markersize=12)
+                            ax.text(0, 24, 'CB', fontsize=9, ha='center', color='red')
+                            # LBs in man
+                            for i, y_pos in enumerate([12, 15, 18]):
+                                ax.plot(2, y_pos, 'r^', markersize=10)
+                                ax.text(2, y_pos - 1.5, 'LB', fontsize=8, ha='center', color='red')
+                            ax.text(12, 25, 'MAN COVERAGE', fontsize=11, ha='center', fontweight='bold', color='red')
+                        
+                        elif 'cover 6' in name.lower() or 'cover6' in name.lower():
+                            # Cover 6 - Quarter-quarter-half
+                            ax.plot(15, 7, 'r^', markersize=14)
+                            ax.text(15, 5, 'CB', fontsize=9, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 13, 'r^', markersize=14)
+                            ax.text(15, 11, 'S', fontsize=9, ha='center', fontweight='bold', color='red')
+                            ax.plot(15, 21, 'r^', markersize=14)
+                            ax.text(15, 23, 'S', fontsize=9, ha='center', fontweight='bold', color='red')
+                            # Zones
+                            quarter1 = Rectangle((10, 0), 15, 7.5, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            quarter2 = Rectangle((10, 7.5), 15, 7.5, linewidth=2, edgecolor='red', facecolor='red', alpha=0.1)
+                            half = Rectangle((10, 15), 15, 15, linewidth=2, edgecolor='red', facecolor='red', alpha=0.15)
+                            ax.add_patch(quarter1)
+                            ax.add_patch(quarter2)
+                            ax.add_patch(half)
+                        
+                        else:
+                            # Generic coverage
+                            for i in range(7):
+                                x = 5
+                                y = 5 + i * 3.5
+                                ax.plot(x, y, 'r^', markersize=12)
+                        
+                        ax.set_title(f'{name}', fontsize=14, fontweight='bold', pad=20, color='red')
+                    
                     # Save diagram
                     plt.tight_layout()
                     plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
@@ -1030,19 +1157,19 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             },
             {
                 "name": "generate_route_play_diagrams",
-                "description": "Generates visual diagrams for specific routes (WR/TE) or plays (QB). Use this AFTER showing route/play statistics when the user requests to see diagrams. Returns image URLs that can be embedded in markdown. Each diagram shows the route pattern or play formation visually with arrows, positions, and yard markers.",
+                "description": "Generates visual diagrams for routes, plays, or defensive coverages. Returns image URLs that can be embedded in markdown. Shows visual tactical illustrations with positions, arrows, zones, and yard markers.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "route_or_play_names": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "List of route names (e.g., ['Slant', 'Post', 'Corner']) or play names (e.g., ['Play Action Pass', 'Bootleg']) to generate diagrams for"
+                            "description": "List of route names (e.g., ['Slant', 'Post']), play names (e.g., ['Bootleg', 'RPO']), or coverage names (e.g., ['Cover 2', 'Cover 3', 'Man Coverage'])"
                         },
                         "diagram_type": {
                             "type": "string",
-                            "enum": ["route", "play"],
-                            "description": "Type of diagram: 'route' for WR/TE routes or 'play' for QB plays"
+                            "enum": ["route", "play", "coverage"],
+                            "description": "Type of diagram: 'route' for WR/TE routes (QB+WR), 'play' for QB plays (full formation), 'coverage' for defensive schemes (DBs+zones)"
                         }
                     },
                     "required": ["route_or_play_names", "diagram_type"]
