@@ -1,0 +1,57 @@
+{
+  "name": "SportsAI - NFL Statistics & Fantasy Football",
+  "short_name": "SportsAI",
+  "description": "Your intelligent NFL companion for stats, analysis, and fantasy football advice",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["sports", "entertainment", "news"],
+  "shortcuts": [
+    {
+      "name": "Live Scores",
+      "short_name": "Scores",
+      "description": "View live NFL scores",
+      "url": "/?view=scores",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Fantasy Team",
+      "short_name": "Fantasy",
+      "description": "Check your fantasy team",
+      "url": "/?view=fantasy",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
