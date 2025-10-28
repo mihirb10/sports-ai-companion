@@ -150,6 +150,8 @@ function formatMessage(text) {
     let imageIndex = 0;
     
     text = text.replace(imagePattern, (match, alt, src) => {
+        // Strip < and > from URLs (Claude sometimes wraps URLs)
+        src = src.replace(/^<|>$/g, '').trim();
         const placeholder = `__IMAGE_PLACEHOLDER_${imageIndex}__`;
         images.push({ alt, src, placeholder });
         imageIndex++;
