@@ -148,7 +148,7 @@ def require_login(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             session["next_url"] = get_next_navigation_url(request)
-            return redirect(url_for('replit_auth.login'))
+            return redirect(url_for('replit_auth.replit_auth'))
 
         expires_in = replit.token.get('expires_in', 0)
         if expires_in < 0:
@@ -158,7 +158,7 @@ def require_login(f):
                 token = replit.refresh_token(token_url=refresh_token_url, client_id=os.environ['REPL_ID'])
             except InvalidGrantError:
                 session["next_url"] = get_next_navigation_url(request)
-                return redirect(url_for('replit_auth.login'))
+                return redirect(url_for('replit_auth.replit_auth'))
             replit.token_updater(token)
 
         return f(*args, **kwargs)
