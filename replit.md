@@ -2,16 +2,25 @@
 
 ## Overview
 
-SportsAI is a Flask-based web application that provides an intelligent conversational interface for NFL football discussions. The application leverages Anthropic's Claude AI to deliver expert analysis on NFL tactics, live game information, fantasy football advice, and strategic football discussions. It features a modern, dark-themed chat interface inspired by Claude and Gemini, optimized for deployment on Replit and accessible from any device.
+SportsAI is a Flask-based web application that provides an intelligent conversational interface for NFL football discussions with user authentication and persistent conversation history. The application leverages Anthropic's Claude AI to deliver expert analysis on NFL tactics, live game information, fantasy football advice, and strategic football discussions. It features a modern, dark-themed chat interface inspired by Claude and Gemini, with Google and email/password authentication via Replit Auth.
 
 ## Recent Changes
+
+**October 28, 2025**: Added user authentication and database persistence
+- Integrated Replit Auth for Google and email/password login
+- Set up PostgreSQL database for user accounts and conversation storage
+- Conversations now persist across sessions and devices for logged-in users
+- Added login landing page before chat access
+- Protected all chat routes with authentication middleware
+- Refactored to application-factory pattern with SQLAlchemy ORM
 
 **October 27, 2025**: Complete UI redesign
 - Rebranded from "NFL AI Companion" to "SportsAI"
 - Implemented dark theme interface (#1a1a1a background) matching Claude/Gemini aesthetic
-- Redesigned header with football logo (🏈) and SportsAI branding in top left
+- Redesigned header with football logo (🏈) and SportsAI branding
 - Moved input box to bottom with modern rounded design
-- Created centered welcome screen with example prompt cards
+- Created centered welcome screen
+- Removed reset button - conversations persist automatically
 - Added smooth animations and modern hover effects
 - Improved mobile responsiveness
 
@@ -21,26 +30,71 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
+### Authentication Architecture
+
+**Replit Auth Integration**:
+- OAuth2-based authentication using Replit's OpenID Connect provider
+- Supports Google login and email/password authentication
+- User session management with Flask-Login
+- Browser session keys for multi-device support
+- Automatic token refresh for seamless user experience
+
+**User Management**:
+- Users stored in PostgreSQL with unique IDs from Replit Auth
+- Profile information includes email, name, and profile image
+- Each user has isolated conversation history
+- OAuth tokens securely stored and managed
+
+### Database Architecture
+
+**Technology Stack**: PostgreSQL (via Replit's managed database)
+
+**Schema Design**:
+1. **Users Table**
+   - id (String, Primary Key) - from Replit Auth sub claim
+   - email, first_name, last_name, profile_image_url
+   - created_at, updated_at timestamps
+   
+2. **OAuth Table**
+   - Stores OAuth tokens and browser session keys
+   - Links authentication tokens to users
+   - Supports multi-device login
+   
+3. **Conversations Table**
+   - id (Integer, Primary Key)
+   - user_id (Foreign Key to Users)
+   - history (JSON Text) - serialized conversation messages
+   - created_at, updated_at timestamps
+
+**Key Design Decisions**:
+- JSON serialization for conversation history allows flexible message formats
+- One conversation per user model - simple and efficient
+- Automatic lazy creation of conversation records on first chat
+- Database-backed sessions replace ephemeral Flask sessions
+
 ### Frontend Architecture
 
 **Technology Stack**: Vanilla JavaScript, HTML5, CSS3
 
-The frontend implements a single-page application (SPA) pattern with a modern dark-themed chat interface inspired by Claude and Gemini. The architecture is deliberately simple to ensure fast loading times and compatibility with Replit's hosting environment.
+The frontend implements a single-page application pattern with authentication-aware routing.
 
-**Key Design Decisions**:
-- **No Framework Dependencies**: Uses vanilla JavaScript to minimize bundle size and deployment complexity on Replit
-- **Server-Side Rendering**: Initial HTML is rendered by Flask templates, with dynamic chat interactions handled via JavaScript
-- **Dark Theme Design**: Modern dark color scheme with CSS variables for consistent theming
-- **Mobile-First Responsive Design**: CSS implements a flexible layout system that adapts to various screen sizes
-- **Stateless Frontend**: All conversation state is maintained server-side in Flask sessions, preventing client-side storage complications
+**Key Pages**:
+1. **Login Page** (`login.html`)
+   - Displays when user is not authenticated
+   - Clean, centered design matching main chat aesthetic
+   - "Sign In" button redirects to Replit Auth flow
+
+2. **Chat Interface** (`index.html`)
+   - Only accessible to authenticated users
+   - Modern dark-themed chat interface
+   - No reset button - conversations persist automatically
 
 **UI Components**:
-- Top navigation bar with logo, app name, and reset button
+- Top navigation bar with SportsAI logo and branding
 - Full-height chat container with centered welcome screen
-- Message bubbles with avatars (user and assistant)
+- Message bubbles with avatars (user 👤 and assistant 🏈)
 - Bottom-fixed input section with auto-expanding textarea
-- Example prompt cards for quick interactions
-- Typing indicator for feedback during API calls
+- Typing indicator for API call feedback
 - Smooth fade-in animations for messages
 
 **Color Scheme**:
@@ -49,109 +103,160 @@ The frontend implements a single-page application (SPA) pattern with a modern da
 - Text primary: #ececec (light)
 - Text secondary: #b0b0b0
 - Accent color: #5865f2 (blue)
-- User messages: #5865f2 background
-- Assistant messages: Dark background with light text
 
 ### Backend Architecture
 
-**Framework**: Flask (Python web framework)
+**Framework**: Flask with application-factory pattern
 
-The backend follows a simple request-response pattern optimized for Replit's serverless-like environment.
-
-**Architecture Pattern**: MVC-inspired structure
-- **Models**: `NFLCompanion` class encapsulates AI interaction logic
-- **Views**: Flask route handlers in `app.py`
-- **Templates**: Jinja2 templates in `templates/` directory
+**Architecture Components**:
+- **Models** (`models.py`): SQLAlchemy ORM models for User, OAuth, Conversation
+- **Authentication** (`replit_auth.py`): Replit Auth blueprint and login management
+- **Application** (`app.py`): Main Flask app with routes and business logic
+- **NFLCompanion Class**: AI interaction logic with tool use capabilities
 
 **Key Design Decisions**:
 
-1. **Session-Based State Management**
-   - Problem: Need to maintain conversation history across multiple HTTP requests
-   - Solution: Flask sessions store conversation history server-side
-   - Rationale: Simpler than implementing a database for this use case; works well with Replit's ephemeral environment
-   - Trade-offs: Sessions are memory-based and cleared on restart, but this is acceptable for a conversational AI where users can easily start new chats
+1. **Database-Backed Persistence**
+   - Replaces ephemeral session storage
+   - Conversations tied to user_id for cross-device access
+   - JSON serialization preserves full conversation context including tool use
 
-2. **Synchronous Request Handling**
-   - Problem: AI API calls can take several seconds
-   - Solution: Synchronous Flask routes with frontend loading indicators
-   - Alternatives Considered: WebSockets or Server-Sent Events for streaming responses
-   - Trade-offs: Simpler implementation and deployment; acceptable latency for chat use case
+2. **Application Factory Pattern**
+   - `create_app()` function initializes all components
+   - Database and login manager initialized via `init_app()`
+   - Replit Auth blueprint registered at `/auth` prefix
+   - Enables better testing and configuration management
 
-3. **Tool/Function Calling Pattern**
-   - The `NFLCompanion` class implements Anthropic's tool use API for accessing live NFL data
-   - Tools are defined for fetching live scores and game information
-   - This enables the AI to access real-time data when discussing current games
+3. **Protected Routes**
+   - `@require_login` decorator protects chat endpoints
+   - Automatic redirect to login for unauthenticated users
+   - Health check endpoint remains public
 
-4. **No Database Layer**
-   - Problem: Persistence requirements for conversation history
-   - Solution: Session-based ephemeral storage
-   - Rationale: Conversations are transient by nature; permanent storage adds complexity without significant user benefit
-   - Future Consideration: Could add optional database for conversation export/history features
+4. **Tool/Function Calling Pattern**
+   - NFLCompanion class implements Anthropic's tool use API
+   - Tools for live NFL scores and team statistics
+   - Full conversation context preserved including tool interactions
 
 ### API Integration Pattern
 
 **RESTful JSON API**:
-- `POST /chat`: Accepts user messages, returns AI responses
-- `POST /reset`: Clears conversation history
-- `GET /health`: Health check endpoint for API key configuration
-- All responses follow consistent JSON structure: `{success: bool, response?: string, error?: string}`
+- `POST /chat`: Accepts user messages, returns AI responses (requires auth)
+- `POST /reset`: Clears conversation history (requires auth)
+- `GET /health`: Health check endpoint (public)
+- `GET /auth/login`: Initiates Replit Auth login flow
+- `GET /auth/logout`: Logs out user and ends Replit session
+
+**Authentication Flow**:
+1. User clicks "Sign In" on landing page
+2. Redirected to `/auth/login`
+3. Replit Auth handles authentication (Google or email/password)
+4. User redirected back to app with auth token
+5. Token exchanged for user info and session created
+6. User can access chat interface
 
 **Error Handling Strategy**:
 - Try-catch blocks around external API calls
 - Graceful degradation with user-friendly error messages
-- Frontend displays error states in the chat interface
+- Authentication errors redirect to error page
+- Frontend displays error states in chat interface
 
 ### Security Considerations
 
-1. **API Key Management**: Uses environment variables (`ANTHROPIC_API_KEY`) accessed via `os.environ`
-2. **Session Security**: Flask secret key generated using `secrets.token_hex()` if not provided via environment
-3. **Input Validation**: User input is transmitted as-is to the AI service; Claude's built-in safety features handle content moderation
+1. **Authentication & Authorization**
+   - OAuth2 + OpenID Connect via Replit Auth
+   - PKCE (Proof Key for Code Exchange) for security
+   - Session-based user tracking with secure cookies
+   - All chat routes protected by authentication middleware
+
+2. **API Key Management**
+   - `ANTHROPIC_API_KEY` stored in Replit Secrets
+   - `SESSION_SECRET` required for secure session management
+   - Never exposed to frontend or logs
+
+3. **Database Security**
+   - Connection string via `DATABASE_URL` environment variable
+   - Connection pooling with health checks
+   - User data isolated by user_id foreign keys
+
+4. **Input Validation**
+   - User input sanitized before storage
+   - Claude's built-in safety features handle content moderation
+   - SQL injection prevented by SQLAlchemy ORM
 
 ## External Dependencies
 
 ### AI Service Integration
 
 **Anthropic Claude API**:
-- Primary service for conversational AI capabilities
-- Uses `anthropic` Python SDK (>=0.39.0)
-- Implements tool/function calling for live data access
-- Configuration: Requires `ANTHROPIC_API_KEY` environment variable
+- Claude Sonnet 4 model for conversational AI
+- Tool/function calling for live data access
+- Requires `ANTHROPIC_API_KEY` environment variable
+- Handles NFL tactics, fantasy advice, and game analysis
 
-**System Prompt Design**: A comprehensive system prompt defines the AI's personality, capabilities, and knowledge domain (NFL tactics, fantasy football, game analysis)
+### Authentication Service
+
+**Replit Auth**:
+- OpenID Connect provider for authentication
+- Supports Google, GitHub, Apple, email/password
+- Configured to use Google and email/password only
+- Automatic user profile management
+- Token refresh for session persistence
+
+### Database Service
+
+**PostgreSQL** (Neon-backed via Replit):
+- Managed database with automatic backups
+- Environment variables: DATABASE_URL, PGHOST, PGPORT, etc.
+- Flask-SQLAlchemy ORM for database operations
+- Psycopg2 driver for PostgreSQL connectivity
 
 ### Live Sports Data
 
-**NFL Data Source**: 
-- The application includes methods for fetching live NFL scores and game data
-- Implementation details suggest external API integration (specific endpoint not visible in provided code)
-- Uses Python `requests` library for HTTP calls
+**ESPN API**:
+- Live NFL scores and game status
+- Team statistics and records
+- No API key required (public endpoint)
+- Integrated via tool calling
 
-### Web Framework Stack
+### Python Dependencies
 
-**Flask** (>=3.0.0):
-- Lightweight WSGI web application framework
-- Chosen for simplicity and Replit compatibility
-- Handles routing, templating, and session management
+**Core Framework**:
+- flask (>=3.0.0) - Web framework
+- flask-sqlalchemy (>=3.1.0) - Database ORM
+- flask-login (>=0.6.0) - User session management
+- flask-dance (>=7.1.0) - OAuth integration
+- gunicorn (>=23.0.0) - Production WSGI server
 
-**Python-dotenv** (>=1.0.0):
-- Environment variable management for local development
-- Allows `.env` file configuration alongside Replit's Secrets
+**Database**:
+- psycopg2-binary - PostgreSQL driver
+- sqlalchemy (>=2.0.0) - Database toolkit
+
+**Authentication**:
+- pyjwt - JWT token handling
+- oauthlib - OAuth protocol implementation
+
+**Other**:
+- anthropic (>=0.39.0) - Claude AI SDK
+- requests (>=2.31.0) - HTTP requests
+- python-dotenv (>=1.0.0) - Environment variables
 
 ### Hosting Platform
 
 **Replit Optimization**:
-- `.replit` configuration file for automated deployment
-- Flask development server suitable for Replit's environment
-- No production WSGI server (gunicorn/uWSGI) required for Replit deployment
-- Static file serving handled by Flask's built-in capabilities
+- Application factory pattern for production deployment
+- Gunicorn configured for autoscale deployment
+- ProxyFix middleware for proper HTTPS handling
+- Database connection pooling for reliability
 
 **Environment Configuration**:
 - `ANTHROPIC_API_KEY`: Required for AI functionality
-- `FLASK_SECRET_KEY`: Optional; auto-generated if not provided
-- Replit Secrets system recommended for sensitive values
+- `SESSION_SECRET`: Required for secure sessions
+- `DATABASE_URL`: Auto-configured by Replit
+- `REPL_ID`: Auto-set for OAuth client ID
+- `ISSUER_URL`: Replit's OpenID Connect endpoint
 
 ### Static Assets
 
 **CSS Framework**: Custom CSS with CSS variables for dark theme
-**JavaScript**: No external libraries; pure vanilla JS for DOM manipulation and fetch API calls
-**Icons**: SVG icons for send button and reset button
+**JavaScript**: Vanilla JS for DOM manipulation and fetch API
+**Icons**: SVG icons for UI elements
