@@ -2,73 +2,7 @@
 
 ## Overview
 
-SportsAI is a Flask-based web application that provides an intelligent conversational interface for NFL football discussions with user authentication and persistent conversation history. The application leverages Anthropic's Claude AI to deliver expert analysis on NFL tactics, live game information, fantasy football advice, and strategic football discussions. It features a modern, dark-themed chat interface inspired by Claude and Gemini, with Google and email/password authentication via Replit Auth.
-
-## Recent Changes
-
-**October 28, 2025**: Enhanced chat UI with loading states and streaming responses
-- **Loading indicator**: Animated loading dots appear in a message bubble below user's prompt while waiting for AI response
-- **Streaming text display**: Responses now appear word-by-word like Claude/Gemini for smooth, engaging UX
-- **Smart speed adjustment**: Longer responses stream faster (15ms/word) vs shorter responses (30ms/word) for optimal reading experience
-- **Auto-scrolling**: Chat window automatically scrolls during streaming to keep new text visible
-- Modern three-dot loading animation with smooth bounce effect
-
-**October 28, 2025**: Proactive fantasy injury monitoring
-- **Automatic injury alerts**: At session start (max once per day), the app proactively checks for injury news about players on user's fantasy roster
-- **Smart news scanning**: Searches NFL news feeds for injury-related headlines mentioning fantasy team players
-- **Filtered updates only**: Only shows message ("By the way - here's an injury update for your fantasy team") if actual injury news is found
-- **Database tracking**: Added last_injury_check timestamp to prevent spam and limit to daily checks
-- Uses existing fantasy_context (my_team, interested_players) to personalize injury monitoring
-
-**October 28, 2025**: Injury reports & NFL news/trade rumors integration
-- **Added get_injury_report() tool**: Provides guidance on injury reports and player availability status with links to official ESPN injury page
-- **Added get_nfl_news() tool**: Fetches latest NFL news and trade rumors from RSS feeds (NFL Trade Rumors + Pro Football Rumors)
-- **Enhanced AI guidance**: System prompt updated to handle injury and news questions with stats-focused responses
-- News feed returns up to 20 recent headlines with summaries and source links
-- Injury tool explains status designations (Out, Doubtful, Questionable, IR) and directs users to current data sources
-- Note: ESPN's public API doesn't provide injury data, so the tool provides helpful guidance instead
-
-**October 28, 2025**: Play-by-play data integration + game analysis capabilities
-- **Added ESPN play-by-play API**: Agent can now access detailed game data including scoring plays, drive summaries, box scores, and player stats
-- **New game analysis features**: Users can ask "What happened in the Chiefs game?" and get comprehensive stat-driven recaps
-- **Enhanced data depth**: Scoring play details, drive efficiency metrics (yards/plays/time), top performer stats from specific games
-- Agent intelligently chains tools: fetches game IDs from live scores, then retrieves detailed play-by-play data
-
-**October 28, 2025**: Smart fantasy football context system
-- **Selective context retention**: Only fantasy football information is retained and fed back to the agent
-- **Auto-extracts fantasy data**: Tracks your team roster, players you're interested in, and trade history
-- **Keyword detection**: System detects fantasy questions ('fantasy', 'my team', 'trade', 'waiver', 'start', 'sit', etc.)
-- **Database storage**: Fantasy context stored separately in database for each user
-- Fantasy context only included in responses to fantasy-related questions to keep API costs low
-
-**October 28, 2025**: Removed retained context to optimize API usage
-- **No conversation history fed back**: Each message is now independent to avoid rate limits and reduce API costs
-- Previous context retention was causing org rate limit issues and excessively long prompts
-- Chat history still saved in database for user reference/display purposes
-
-**October 28, 2025**: Major AI personality redesign + logout button
-- **Transformed agent into stats-focused sports nerd**: Leads with statistics and numbers, uses extensive bullet points, includes emojis to highlight data (📊 📈 🔥)
-- **Reduced chattiness**: Agent asks fewer questions, lets user drive conversation, only prompts when topic naturally concludes
-- **Data-first approach**: Every response prioritizes quantifiable facts over feelings/opinions
-- Added logout button in top right corner of chat interface
-
-**October 28, 2025**: Added user authentication and database persistence
-- Integrated Replit Auth for Google and email/password login
-- Set up PostgreSQL database for user accounts and conversation storage
-- Conversations now persist across sessions and devices for logged-in users
-- Added login landing page before chat access
-- Protected all chat routes with authentication middleware
-- Refactored to application-factory pattern with SQLAlchemy ORM
-
-**October 27, 2025**: Complete UI redesign
-- Rebranded from "NFL AI Companion" to "SportsAI"
-- Implemented dark theme interface (#1a1a1a background) matching Claude/Gemini aesthetic
-- Redesigned header with football logo (🏈) and SportsAI branding
-- Moved input box to bottom with modern rounded design
-- Created centered welcome screen
-- Removed reset button - conversations persist automatically
-- Added smooth animations and modern hover effects
-- Improved mobile responsiveness
+SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with visual diagrams, proactive fantasy injury monitoring, integration of NFL news and injury reports, and detailed game analysis using play-by-play data. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
 
 ## User Preferences
 
@@ -78,231 +12,60 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication Architecture
 
-**Replit Auth Integration**:
-- OAuth2-based authentication using Replit's OpenID Connect provider
-- Supports Google login and email/password authentication
-- User session management with Flask-Login
-- Browser session keys for multi-device support
-- Automatic token refresh for seamless user experience
-
-**User Management**:
-- Users stored in PostgreSQL with unique IDs from Replit Auth
-- Profile information includes email, name, and profile image
-- Each user has isolated conversation history
-- OAuth tokens securely stored and managed
+SportsAI integrates Replit Auth for OAuth2-based authentication, supporting Google and email/password login. User sessions are managed with Flask-Login, allowing persistent access across devices. User accounts are stored in PostgreSQL, each with isolated conversation history.
 
 ### Database Architecture
 
-**Technology Stack**: PostgreSQL (via Replit's managed database)
-
-**Schema Design**:
-1. **Users Table**
-   - id (String, Primary Key) - from Replit Auth sub claim
-   - email, first_name, last_name, profile_image_url
-   - created_at, updated_at timestamps
-   
-2. **OAuth Table**
-   - Stores OAuth tokens and browser session keys
-   - Links authentication tokens to users
-   - Supports multi-device login
-   
-3. **Conversations Table**
-   - id (Integer, Primary Key)
-   - user_id (Foreign Key to Users)
-   - history (JSON Text) - serialized conversation messages
-   - created_at, updated_at timestamps
-
-**Key Design Decisions**:
-- JSON serialization for conversation history allows flexible message formats
-- One conversation per user model - simple and efficient
-- Automatic lazy creation of conversation records on first chat
-- Database-backed sessions replace ephemeral Flask sessions
+The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy ORM. The schema includes tables for `Users` (storing Replit Auth IDs and profile info), `OAuth` (for tokens and browser session keys), and `Conversations` (storing serialized JSON conversation history per user). Conversation records are lazily created and linked to `user_id` for persistence.
 
 ### Frontend Architecture
 
-**Technology Stack**: Vanilla JavaScript, HTML5, CSS3
-
-The frontend implements a single-page application pattern with authentication-aware routing.
-
-**Key Pages**:
-1. **Login Page** (`login.html`)
-   - Displays when user is not authenticated
-   - Clean, centered design matching main chat aesthetic
-   - "Sign In" button redirects to Replit Auth flow
-
-2. **Chat Interface** (`index.html`)
-   - Only accessible to authenticated users
-   - Modern dark-themed chat interface
-   - No reset button - conversations persist automatically
-
-**UI Components**:
-- Top navigation bar with SportsAI logo and branding
-- Full-height chat container with centered welcome screen
-- Message bubbles with avatars (user 👤 and assistant 🏈)
-- Bottom-fixed input section with auto-expanding textarea
-- Typing indicator for API call feedback
-- Smooth fade-in animations for messages
-
-**Color Scheme**:
-- Primary background: #1a1a1a (dark)
-- Secondary background: #2d2d2d
-- Text primary: #ececec (light)
-- Text secondary: #b0b0b0
-- Accent color: #5865f2 (blue)
+Built with Vanilla JavaScript, HTML5, and CSS3, the frontend follows a single-page application pattern. It features a `login.html` for unauthenticated access and an `index.html` for the chat interface. The UI boasts a modern dark theme (`#1a1a1a` primary background) inspired by Claude/Gemini, with a full-height chat container, message bubbles (user 👤, assistant 🏈), an auto-expanding input box, and smooth animations.
 
 ### Backend Architecture
 
-**Framework**: Flask with application-factory pattern
+The backend is a Flask application utilizing an application-factory pattern. Core components include:
+- **Models**: SQLAlchemy ORM for database interactions.
+- **Authentication**: Replit Auth blueprint for login management.
+- **Application**: Main Flask app handling routes and business logic.
+- **NFLCompanion Class**: Manages AI interaction and tool use.
 
-**Architecture Components**:
-- **Models** (`models.py`): SQLAlchemy ORM models for User, OAuth, Conversation
-- **Authentication** (`replit_auth.py`): Replit Auth blueprint and login management
-- **Application** (`app.py`): Main Flask app with routes and business logic
-- **NFLCompanion Class**: AI interaction logic with tool use capabilities
-
-**Key Design Decisions**:
-
-1. **Database-Backed Persistence**
-   - Replaces ephemeral session storage
-   - Conversations tied to user_id for cross-device access
-   - JSON serialization preserves full conversation context including tool use
-
-2. **Application Factory Pattern**
-   - `create_app()` function initializes all components
-   - Database and login manager initialized via `init_app()`
-   - Replit Auth blueprint registered at `/auth` prefix
-   - Enables better testing and configuration management
-
-3. **Protected Routes**
-   - `@require_login` decorator protects chat endpoints
-   - Automatic redirect to login for unauthenticated users
-   - Health check endpoint remains public
-
-4. **Tool/Function Calling Pattern**
-   - NFLCompanion class implements Anthropic's tool use API
-   - Tools for live NFL scores and team statistics
-   - Full conversation context preserved including tool interactions
+Key design decisions include database-backed persistence for conversations, the application factory pattern for modularity, and `@require_login` decorators to protect chat routes. The `NFLCompanion` class implements Anthropic's tool use API for dynamic data access.
 
 ### API Integration Pattern
 
-**RESTful JSON API**:
-- `POST /chat`: Accepts user messages, returns AI responses (requires auth)
-- `POST /reset`: Clears conversation history (requires auth)
-- `GET /health`: Health check endpoint (public)
-- `GET /auth/login`: Initiates Replit Auth login flow
-- `GET /auth/logout`: Logs out user and ends Replit session
-
-**Authentication Flow**:
-1. User clicks "Sign In" on landing page
-2. Redirected to `/auth/login`
-3. Replit Auth handles authentication (Google or email/password)
-4. User redirected back to app with auth token
-5. Token exchanged for user info and session created
-6. User can access chat interface
-
-**Error Handling Strategy**:
-- Try-catch blocks around external API calls
-- Graceful degradation with user-friendly error messages
-- Authentication errors redirect to error page
-- Frontend displays error states in chat interface
+The application exposes a RESTful JSON API with endpoints like `/chat` (for AI interaction), `/auth/login`, and `/auth/logout`. Authentication is handled via Replit Auth, redirecting users through the OAuth flow. Error handling involves try-catch blocks for external API calls, graceful degradation, and redirects for authentication failures.
 
 ### Security Considerations
 
-1. **Authentication & Authorization**
-   - OAuth2 + OpenID Connect via Replit Auth
-   - PKCE (Proof Key for Code Exchange) for security
-   - Session-based user tracking with secure cookies
-   - All chat routes protected by authentication middleware
-
-2. **API Key Management**
-   - `ANTHROPIC_API_KEY` stored in Replit Secrets
-   - `SESSION_SECRET` required for secure session management
-   - Never exposed to frontend or logs
-
-3. **Database Security**
-   - Connection string via `DATABASE_URL` environment variable
-   - Connection pooling with health checks
-   - User data isolated by user_id foreign keys
-
-4. **Input Validation**
-   - User input sanitized before storage
-   - Claude's built-in safety features handle content moderation
-   - SQL injection prevented by SQLAlchemy ORM
+Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, secure session management, API keys stored in Replit Secrets, and database security via connection pooling and ORM-based SQL injection prevention. User input is sanitized, and Claude's safety features manage content moderation.
 
 ## External Dependencies
 
 ### AI Service Integration
 
-**Anthropic Claude API**:
-- Claude Sonnet 4 model for conversational AI
-- Tool/function calling for live data access
-- Requires `ANTHROPIC_API_KEY` environment variable
-- Handles NFL tactics, fantasy advice, and game analysis
+**Anthropic Claude API**: Utilizes Claude Sonnet 4 for conversational AI, including tool/function calling for dynamic data retrieval. Requires `ANTHROPIC_API_KEY`.
 
 ### Authentication Service
 
-**Replit Auth**:
-- OpenID Connect provider for authentication
-- Supports Google, GitHub, Apple, email/password
-- Configured to use Google and email/password only
-- Automatic user profile management
-- Token refresh for session persistence
+**Replit Auth**: Serves as the OpenID Connect provider, configured for Google and email/password authentication. Manages user profiles and token refreshes.
 
 ### Database Service
 
-**PostgreSQL** (Neon-backed via Replit):
-- Managed database with automatic backups
-- Environment variables: DATABASE_URL, PGHOST, PGPORT, etc.
-- Flask-SQLAlchemy ORM for database operations
-- Psycopg2 driver for PostgreSQL connectivity
+**PostgreSQL**: Provided by Replit (Neon-backed), used for persistent storage of user data, OAuth tokens, and conversation histories. Accessed via Flask-SQLAlchemy and Psycopg2.
 
 ### Live Sports Data
 
-**ESPN API**:
-- Live NFL scores and game status
-- Team statistics and records
-- No API key required (public endpoint)
-- Integrated via tool calling
+**ESPN API**: Provides live NFL scores, game statuses, team statistics, and play-by-play data. This is a public endpoint requiring no API key and is integrated via tool calling.
 
 ### Python Dependencies
 
-**Core Framework**:
-- flask (>=3.0.0) - Web framework
-- flask-sqlalchemy (>=3.1.0) - Database ORM
-- flask-login (>=0.6.0) - User session management
-- flask-dance (>=7.1.0) - OAuth integration
-- gunicorn (>=23.0.0) - Production WSGI server
-
-**Database**:
-- psycopg2-binary - PostgreSQL driver
-- sqlalchemy (>=2.0.0) - Database toolkit
-
-**Authentication**:
-- pyjwt - JWT token handling
-- oauthlib - OAuth protocol implementation
-
-**Other**:
-- anthropic (>=0.39.0) - Claude AI SDK
-- requests (>=2.31.0) - HTTP requests
-- python-dotenv (>=1.0.0) - Environment variables
+Key Python libraries include `flask`, `flask-sqlalchemy`, `flask-login`, `anthropic`, `psycopg2-binary`, `sqlalchemy`, `requests`, and `gunicorn` for production deployment.
 
 ### Hosting Platform
 
-**Replit Optimization**:
-- Application factory pattern for production deployment
-- Gunicorn configured for autoscale deployment
-- ProxyFix middleware for proper HTTPS handling
-- Database connection pooling for reliability
-
-**Environment Configuration**:
-- `ANTHROPIC_API_KEY`: Required for AI functionality
-- `SESSION_SECRET`: Required for secure sessions
-- `DATABASE_URL`: Auto-configured by Replit
-- `REPL_ID`: Auto-set for OAuth client ID
-- `ISSUER_URL`: Replit's OpenID Connect endpoint
+**Replit**: The application is optimized for Replit deployment, leveraging its managed PostgreSQL, secrets management, and Gunicorn for scaling.
 
 ### Static Assets
 
-**CSS Framework**: Custom CSS with CSS variables for dark theme
-**JavaScript**: Vanilla JS for DOM manipulation and fetch API
-**Icons**: SVG icons for UI elements
+The frontend uses custom CSS with variables for theming, Vanilla JavaScript for interactivity, and SVG icons for UI elements.
