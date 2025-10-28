@@ -86,6 +86,14 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 • Format as bullet points with final scores
 • Include game status (Final, In Progress, Scheduled)
 
+**Game Recap/Analysis Questions:**
+• When users ask "What happened in the [team] game?" or "How did [team] do?", use get_play_by_play
+• First use get_live_scores to get the game_id, then call get_play_by_play with that ID
+• Present scoring plays chronologically with stats
+• Highlight top performers with their stat lines
+• Include key drive information (yards, plays, result)
+• Focus on quantifiable performance metrics
+
 Example good response:
 "📊 Patrick Mahomes 2024 Stats:
 • 4,183 yards (3rd in NFL)
@@ -110,6 +118,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             games = []
             for event in data.get('events', []):
                 game_info = {
+                    'game_id': event.get('id', 'N/A'),
                     'name': event.get('name', 'N/A'),
                     'status': event.get('status', {}).get('type', {}).get('description', 'N/A'),
                     'home_team': event.get('competitions', [{}])[0].get('competitors', [{}])[0].get('team', {}).get('displayName', 'N/A'),
@@ -161,6 +170,94 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'error': str(e)
             }
 
+    def get_play_by_play(self, game_id: str) -> dict:
+        """Get detailed play-by-play data for a specific game."""
+        try:
+            url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={game_id}"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract key game information
+            header = data.get('header', {})
+            game_info = {
+                'game_id': game_id,
+                'matchup': header.get('competitions', [{}])[0].get('competitors', [{}])[0].get('team', {}).get('displayName', 'N/A') + ' vs ' + 
+                          header.get('competitions', [{}])[0].get('competitors', [{}])[1].get('team', {}).get('displayName', 'N/A'),
+                'status': header.get('competitions', [{}])[0].get('status', {}).get('type', {}).get('description', 'N/A')
+            }
+            
+            # Extract scoring plays
+            scoring_plays = []
+            for play in data.get('scoringPlays', []):
+                scoring_plays.append({
+                    'quarter': play.get('period', {}).get('number', 'N/A'),
+                    'clock': play.get('clock', {}).get('displayValue', 'N/A'),
+                    'team': play.get('team', {}).get('displayName', 'N/A'),
+                    'description': play.get('text', 'N/A'),
+                    'score_value': play.get('scoreValue', 0),
+                    'away_score': play.get('awayScore', 0),
+                    'home_score': play.get('homeScore', 0)
+                })
+            
+            # Extract drive summaries
+            drives = []
+            for drive in data.get('drives', {}).get('previous', [])[:10]:  # Last 10 drives
+                drives.append({
+                    'team': drive.get('team', {}).get('displayName', 'N/A'),
+                    'result': drive.get('result', 'N/A'),
+                    'plays': drive.get('plays', 0),
+                    'yards': drive.get('yards', 0),
+                    'time': drive.get('timeElapsed', {}).get('displayValue', 'N/A'),
+                    'description': drive.get('description', 'N/A')
+                })
+            
+            # Extract box score stats
+            box_score = data.get('boxscore', {})
+            team_stats = []
+            for team in box_score.get('teams', []):
+                stats = {}
+                for stat in team.get('statistics', []):
+                    stats[stat.get('label', 'N/A')] = stat.get('displayValue', 'N/A')
+                
+                team_stats.append({
+                    'team': team.get('team', {}).get('displayName', 'N/A'),
+                    'stats': stats
+                })
+            
+            # Extract player stats
+            player_stats = {}
+            players = box_score.get('players', [])
+            for team_data in players:
+                team_name = team_data.get('team', {}).get('displayName', 'N/A')
+                player_stats[team_name] = {}
+                
+                for stat_category in team_data.get('statistics', []):
+                    category = stat_category.get('name', 'N/A')
+                    player_stats[team_name][category] = []
+                    
+                    for athlete in stat_category.get('athletes', [])[:5]:  # Top 5 per category
+                        player_stats[team_name][category].append({
+                            'name': athlete.get('athlete', {}).get('displayName', 'N/A'),
+                            'stats': athlete.get('stats', [])
+                        })
+            
+            return {
+                'success': True,
+                'game_info': game_info,
+                'scoring_plays': scoring_plays,
+                'drives': drives,
+                'team_stats': team_stats,
+                'player_stats': player_stats
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': f'Could not fetch play-by-play data for game {game_id}'
+            }
+
     def chat(self, user_message: str, conversation_history: list) -> tuple:
         """Main chat interface with tool use."""
         conversation_history.append({
@@ -171,7 +268,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
         tools = [
             {
                 "name": "get_live_scores",
-                "description": "Fetches current NFL scores, game status, and week information. Use this when the user asks about current games, scores, or what's happening right now in the NFL.",
+                "description": "Fetches current NFL scores, game status, and week information. Use this when the user asks about current games, scores, or what's happening right now in the NFL. Returns game IDs that can be used with get_play_by_play.",
                 "input_schema": {
                     "type": "object",
                     "properties": {},
@@ -190,6 +287,20 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                         }
                     },
                     "required": ["team_name"]
+                }
+            },
+            {
+                "name": "get_play_by_play",
+                "description": "Gets detailed play-by-play data for a specific NFL game including scoring plays, drive summaries, box score stats, and player performance. Use this when the user asks about what happened in a specific game, scoring details, drive information, or player stats from a particular game. You can get game_id from the get_live_scores tool.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "game_id": {
+                            "type": "string",
+                            "description": "The ESPN game ID (e.g., '401547417'). Get this from the get_live_scores tool first by looking at recent games."
+                        }
+                    },
+                    "required": ["game_id"]
                 }
             }
         ]
@@ -211,6 +322,8 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 tool_result = self.get_live_scores()
             elif tool_name == "get_team_stats":
                 tool_result = self.get_team_stats(tool_input["team_name"])
+            elif tool_name == "get_play_by_play":
+                tool_result = self.get_play_by_play(tool_input["game_id"])
             else:
                 tool_result = {"error": "Unknown tool"}
             

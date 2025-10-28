@@ -6,6 +6,12 @@ SportsAI is a Flask-based web application that provides an intelligent conversat
 
 ## Recent Changes
 
+**October 28, 2025**: Play-by-play data integration + game analysis capabilities
+- **Added ESPN play-by-play API**: Agent can now access detailed game data including scoring plays, drive summaries, box scores, and player stats
+- **New game analysis features**: Users can ask "What happened in the Chiefs game?" and get comprehensive stat-driven recaps
+- **Enhanced data depth**: Scoring play details, drive efficiency metrics (yards/plays/time), top performer stats from specific games
+- Agent intelligently chains tools: fetches game IDs from live scores, then retrieves detailed play-by-play data
+
 **October 28, 2025**: Major AI personality redesign + logout button
 - **Transformed agent into stats-focused sports nerd**: Leads with statistics and numbers, uses extensive bullet points, includes emojis to highlight data (📊 📈 🔥)
 - **Reduced chattiness**: Agent asks fewer questions, lets user drive conversation, only prompts when topic naturally concludes
