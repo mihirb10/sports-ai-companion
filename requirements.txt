@@ -11,3 +11,4 @@ pyjwt
 feedparser
 matplotlib
 pillow
+espn-api
