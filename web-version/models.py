@@ -40,6 +40,7 @@ class Conversation(db.Model):
     user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
     history = db.Column(Text, nullable=False, default='[]')
     fantasy_context = db.Column(Text, nullable=False, default='{"my_team": [], "interested_players": [], "trade_history": []}')
+    recent_analysis_context = db.Column(Text, nullable=False, default='{}')
     last_injury_check = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)

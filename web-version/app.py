@@ -734,7 +734,17 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             }
 
     def chat(self, user_message: str, conversation_history: list) -> tuple:
-        """Main chat interface with tool use."""
+        """Main chat interface with tool use.
+        
+        Returns:
+            tuple: (assistant_message, conversation_history, tool_usage_data)
+                   tool_usage_data contains info about tools used in this conversation
+        """
+        tool_usage_data = {
+            'used_analyze_player_routes_plays': False,
+            'analysis_data': None
+        }
+        
         conversation_history.append({
             "role": "user",
             "content": user_message
@@ -882,6 +892,13 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 position = tool_input["position"]
                 num_results = tool_input.get("num_results", 3)
                 tool_result = self.analyze_player_routes_plays(player_name, position, num_results)
+                # Track that we used this tool
+                tool_usage_data['used_analyze_player_routes_plays'] = True
+                tool_usage_data['analysis_data'] = {
+                    'player_name': player_name,
+                    'position': position,
+                    'result': tool_result
+                }
             elif tool_name == "generate_route_play_diagrams":
                 route_or_play_names = tool_input["route_or_play_names"]
                 diagram_type = tool_input["diagram_type"]
@@ -938,7 +955,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             "content": assistant_message
         })
         
-        return assistant_message, conversation_history
+        return assistant_message, conversation_history, tool_usage_data
 
 
 def create_app():
@@ -1042,9 +1059,44 @@ def create_app():
             fantasy_keywords = ['fantasy', 'my team', 'my roster', 'trade', 'waiver', 'start', 'sit', 'bench', 'draft']
             is_fantasy_question = any(keyword in user_message.lower() for keyword in fantasy_keywords)
             
+            # Check if this is an affirmative response to route/play analysis
+            affirmative_keywords = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'show me', 'please', 'absolutely', 'definitely']
+            is_short_message = len(user_message.split()) <= 5  # Short messages (5 words or less)
+            is_affirmative = any(keyword in user_message.lower() for keyword in affirmative_keywords) and is_short_message
+            
             # Start with empty history each time (no retained context)
             # This keeps API costs low and avoids rate limits
             conversation_history = []
+            
+            # If this is a short affirmative response and we have recent analysis context, inject it
+            recent_analysis_context = json.loads(conversation.recent_analysis_context)
+            if is_affirmative and recent_analysis_context:
+                # Build context message
+                analysis_data = recent_analysis_context.get('analysis_data', {})
+                if analysis_data:
+                    player_name = analysis_data.get('player_name', 'Unknown Player')
+                    position = analysis_data.get('position', 'Unknown Position')
+                    result = analysis_data.get('result', {})
+                    
+                    context_message = f"RECENT ROUTE/PLAY ANALYSIS CONTEXT:\n"
+                    context_message += f"User just asked about {player_name}'s ({position}) top routes/plays.\n"
+                    
+                    if result.get('success') and result.get('top_routes'):
+                        routes_or_plays = result['top_routes']
+                        route_names = [r.get('route_name', 'Unknown') for r in routes_or_plays]
+                        context_message += f"Analysis showed these top {'routes' if position in ['WR', 'TE'] else 'plays'}: {', '.join(route_names)}\n"
+                        context_message += f"Analysis type: {result.get('analysis_type', 'routes')}\n"
+                    
+                    context_message += f"\nUser is now responding affirmatively ('{user_message}'). They likely want to see visual diagrams of these routes/plays."
+                    
+                    conversation_history.append({
+                        "role": "user",
+                        "content": context_message
+                    })
+                    conversation_history.append({
+                        "role": "assistant",
+                        "content": "I understand the context from our previous exchange."
+                    })
             
             # If fantasy football question, prepend fantasy context
             if is_fantasy_question:
@@ -1067,7 +1119,16 @@ def create_app():
                         "content": "I'll remember your fantasy football context."
                     })
             
-            response, updated_history = companion.chat(user_message, conversation_history)
+            response, updated_history, tool_usage = companion.chat(user_message, conversation_history)
+            
+            # If route/play analysis was used, store the context for follow-up questions
+            if tool_usage.get('used_analyze_player_routes_plays'):
+                conversation.recent_analysis_context = json.dumps(tool_usage)
+                db.session.commit()
+            # Clear analysis context if user's message was affirmative (we just used it)
+            elif is_affirmative and recent_analysis_context:
+                conversation.recent_analysis_context = '{}'
+                db.session.commit()
             
             # If fantasy football question, extract and update fantasy context
             if is_fantasy_question:
