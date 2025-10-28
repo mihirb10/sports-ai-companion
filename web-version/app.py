@@ -277,6 +277,71 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'news': []
             }
 
+    def check_fantasy_team_injuries(self, fantasy_context: dict) -> dict:
+        """Check for injury-related news for players on the user's fantasy team."""
+        try:
+            # Extract player names from fantasy context
+            my_team = fantasy_context.get('my_team', [])
+            interested_players = fantasy_context.get('interested_players', [])
+            all_players = list(set(my_team + interested_players))
+            
+            if not all_players:
+                return {
+                    'success': False,
+                    'message': 'No fantasy team players to check',
+                    'updates': []
+                }
+            
+            # Fetch recent news
+            news_result = self.get_nfl_news(limit=20)
+            
+            if not news_result.get('success', False):
+                return {
+                    'success': False,
+                    'message': 'Could not fetch news for injury check',
+                    'updates': []
+                }
+            
+            # Search for injury-related news mentioning the user's players
+            injury_updates = []
+            injury_keywords = ['injury', 'injured', 'hurt', 'questionable', 'doubtful', 'out', 'ir', 'placed on', 'return', 'activated', 'designated']
+            
+            for news_item in news_result.get('news', []):
+                title = news_item.get('title', '').lower()
+                summary = news_item.get('summary', '').lower()
+                
+                # Check if this news mentions any of the user's players
+                for player in all_players:
+                    player_lower = player.lower()
+                    
+                    # Check if player name is in title or summary AND it's injury-related
+                    if player_lower in title or player_lower in summary:
+                        is_injury_related = any(keyword in title or keyword in summary for keyword in injury_keywords)
+                        
+                        if is_injury_related:
+                            injury_updates.append({
+                                'player': player,
+                                'headline': news_item.get('title', 'N/A'),
+                                'summary': news_item.get('summary', 'N/A'),
+                                'link': news_item.get('link', 'N/A'),
+                                'source': news_item.get('source', 'N/A')
+                            })
+            
+            return {
+                'success': True,
+                'updates': injury_updates,
+                'count': len(injury_updates)
+            }
+            
+        except Exception as e:
+            logging.error(f"Error checking fantasy team injuries: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Could not check fantasy team injuries',
+                'updates': []
+            }
+
     def get_play_by_play(self, game_id: str) -> dict:
         """Get detailed play-by-play data for a specific game."""
         try:
