@@ -23,7 +23,8 @@ async function sendMessage() {
     userInput.value = '';
     userInput.style.height = 'auto';
     
-    typingIndicator.style.display = 'flex';
+    // Add loading indicator as a message bubble
+    const loadingDiv = addLoadingMessage();
     
     try {
         const response = await fetch('/chat', {
@@ -36,21 +37,73 @@ async function sendMessage() {
         
         const data = await response.json();
         
-        typingIndicator.style.display = 'none';
+        // Remove loading indicator
+        loadingDiv.remove();
         
         if (data.success) {
-            addMessage(data.response, 'assistant');
+            // Stream the response word by word
+            await streamMessage(data.response, 'assistant');
         } else {
             addMessage(`Error: ${data.error || 'Something went wrong'}`, 'error');
         }
     } catch (error) {
-        typingIndicator.style.display = 'none';
+        loadingDiv.remove();
         addMessage(`Connection error: ${error.message}. Make sure the server is running.`, 'error');
     }
     
     userInput.disabled = false;
     sendBtn.disabled = false;
     userInput.focus();
+}
+
+function addLoadingMessage() {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message assistant-message loading-message';
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+    avatarDiv.textContent = '🏈';
+    messageDiv.appendChild(avatarDiv);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+    messageDiv.appendChild(contentDiv);
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    return messageDiv;
+}
+
+async function streamMessage(text, type) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+    avatarDiv.textContent = '🏈';
+    messageDiv.appendChild(avatarDiv);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    messageDiv.appendChild(contentDiv);
+    
+    chatContainer.appendChild(messageDiv);
+    
+    // Split into words for streaming effect
+    const words = text.split(' ');
+    let currentText = '';
+    
+    for (let i = 0; i < words.length; i++) {
+        currentText += (i > 0 ? ' ' : '') + words[i];
+        contentDiv.innerHTML = formatMessage(currentText);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // Adjust speed: faster for longer responses
+        const delay = words.length > 100 ? 15 : 30;
+        await new Promise(resolve => setTimeout(resolve, delay));
+    }
 }
 
 function addMessage(text, type) {
