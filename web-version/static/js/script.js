@@ -144,7 +144,26 @@ function addMessage(text, type) {
 }
 
 function formatMessage(text) {
+    // Extract markdown images before escaping HTML
+    const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const images = [];
+    let imageIndex = 0;
+    
+    text = text.replace(imagePattern, (match, alt, src) => {
+        const placeholder = `__IMAGE_PLACEHOLDER_${imageIndex}__`;
+        images.push({ alt, src, placeholder });
+        imageIndex++;
+        return placeholder;
+    });
+    
     text = escapeHtml(text);
+    
+    // Replace image placeholders with actual img tags
+    images.forEach(({ alt, src, placeholder }) => {
+        const escapedAlt = alt || 'Diagram';
+        const imgTag = `<img src="${src}" alt="${escapedAlt}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;">`;
+        text = text.replace(placeholder, imgTag);
+    });
     
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
