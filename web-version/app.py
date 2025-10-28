@@ -20,6 +20,7 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import hashlib
+from espn_api.football import League
 
 from models import db, User, Conversation
 from replit_auth import login_manager, make_replit_blueprint, require_login
@@ -77,8 +78,11 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 🎮 SPECIFIC RESPONSE PATTERNS:
 
 **Fantasy Football Questions:**
-• If user asks about fantasy football and hasn't shared their team roster yet, ask them "Who's on your team?" so you can provide personalized advice
-• Once you know their team, provide player-specific stats and recommendations
+• If ESPN Fantasy integration is set up (ESPN_LEAGUE_ID in secrets), use get_fantasy_team to fetch their real roster
+• This gives you their actual team roster, current matchup, standings, and player injury statuses
+• Provide personalized start/sit recommendations based on their ACTUAL roster
+• If ESPN isn't set up and user asks about fantasy, ask "Who's on your team?" to provide manual advice
+• Once you know their team (from ESPN or manually), provide player-specific stats and matchup analysis
 
 **"Games Today" Questions:**
 • Use the get_live_scores tool to fetch current data
@@ -415,6 +419,125 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'error': str(e),
                 'message': 'Could not check fantasy team injuries',
                 'updates': []
+            }
+
+    def get_fantasy_team(self, league_id: str = None, espn_s2: str = None, swid: str = None, year: int = 2025) -> dict:
+        """Fetch user's ESPN Fantasy Football team roster, matchups, and standings.
+        
+        Args:
+            league_id: ESPN Fantasy League ID (visible in league URL)
+            espn_s2: ESPN s2 cookie (for private leagues)
+            swid: ESPN SWID cookie (for private leagues)
+            year: Season year (default 2025)
+            
+        Returns:
+            dict with team roster, matchups, standings, and player info
+        """
+        try:
+            # Use environment variables if parameters not provided
+            league_id = league_id or os.getenv('ESPN_LEAGUE_ID')
+            espn_s2 = espn_s2 or os.getenv('ESPN_S2')
+            swid = swid or os.getenv('ESPN_SWID')
+            
+            if not league_id:
+                return {
+                    'success': False,
+                    'message': 'ESPN League ID is required. Please set ESPN_LEAGUE_ID in secrets or provide it directly.',
+                    'setup_help': 'Find your League ID in your ESPN Fantasy Football league URL: https://fantasy.espn.com/football/league?leagueId=YOUR_LEAGUE_ID'
+                }
+            
+            # Initialize league connection
+            if espn_s2 and swid:
+                # Private league - requires authentication
+                league = League(league_id=int(league_id), year=year, espn_s2=espn_s2, swid=swid)
+            else:
+                # Public league or try without auth
+                try:
+                    league = League(league_id=int(league_id), year=year)
+                except Exception as auth_error:
+                    return {
+                        'success': False,
+                        'message': 'This appears to be a private league. Please provide ESPN_S2 and ESPN_SWID cookies.',
+                        'setup_help': 'To get cookies: 1) Log into ESPN Fantasy Football, 2) Open browser Developer Tools (F12), 3) Go to Application/Storage → Cookies → espn.com, 4) Copy espn_s2 and SWID values'
+                    }
+            
+            # Get current week
+            current_week = league.current_week
+            
+            # Get all teams
+            teams = league.teams
+            
+            # Find user's team (first team for now, could be customized)
+            my_team = teams[0]
+            
+            # Build roster data
+            roster = []
+            for player in my_team.roster:
+                roster.append({
+                    'name': player.name,
+                    'position': player.position,
+                    'slot': player.slot_position,
+                    'team': player.proTeam if hasattr(player, 'proTeam') else 'N/A',
+                    'points_total': round(player.total_points, 1) if hasattr(player, 'total_points') else 0,
+                    'projected_points': round(player.projected_total_points, 1) if hasattr(player, 'projected_total_points') else 0,
+                    'injury_status': player.injuryStatus if hasattr(player, 'injuryStatus') and player.injuryStatus else 'HEALTHY'
+                })
+            
+            # Get current matchup
+            current_matchup = None
+            if hasattr(league, 'box_scores') and current_week:
+                try:
+                    box_scores = league.box_scores(week=current_week)
+                    for matchup in box_scores:
+                        if matchup.home_team == my_team or matchup.away_team == my_team:
+                            opponent = matchup.away_team if matchup.home_team == my_team else matchup.home_team
+                            current_matchup = {
+                                'week': current_week,
+                                'opponent': opponent.team_name,
+                                'my_score': round(matchup.home_score if matchup.home_team == my_team else matchup.away_score, 1),
+                                'opponent_score': round(matchup.away_score if matchup.home_team == my_team else matchup.home_score, 1),
+                                'my_projected': round(matchup.home_projected if matchup.home_team == my_team else matchup.away_projected, 1) if hasattr(matchup, 'home_projected') else 0
+                            }
+                            break
+                except Exception as matchup_error:
+                    logging.warning(f"Could not fetch current matchup: {matchup_error}")
+            
+            # Get standings
+            standings = []
+            for team in teams:
+                standings.append({
+                    'team_name': team.team_name,
+                    'wins': team.wins,
+                    'losses': team.losses,
+                    'points_for': round(team.points_for, 1),
+                    'points_against': round(team.points_against, 1),
+                    'is_my_team': team == my_team
+                })
+            
+            # Sort standings by wins (descending), then points for
+            standings.sort(key=lambda x: (x['wins'], x['points_for']), reverse=True)
+            
+            return {
+                'success': True,
+                'league_name': league.settings.name if hasattr(league.settings, 'name') else 'Fantasy League',
+                'team_name': my_team.team_name,
+                'owner': my_team.owner if hasattr(my_team, 'owner') else 'You',
+                'record': f"{my_team.wins}-{my_team.losses}",
+                'current_week': current_week,
+                'roster': roster,
+                'roster_count': len(roster),
+                'current_matchup': current_matchup,
+                'standings': standings,
+                'note': 'Fantasy team data refreshed from ESPN Fantasy Football'
+            }
+            
+        except Exception as e:
+            logging.error(f"Error fetching ESPN Fantasy team: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'message': f'Could not fetch ESPN Fantasy team. Error: {str(e)}',
+                'setup_help': 'Make sure ESPN_LEAGUE_ID is set correctly. For private leagues, also set ESPN_S2 and ESPN_SWID cookies.'
             }
 
     def get_play_by_play(self, game_id: str) -> dict:
@@ -1192,6 +1315,21 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                     },
                     "required": ["route_or_play_names", "diagram_type"]
                 }
+            },
+            {
+                "name": "get_fantasy_team",
+                "description": "Fetches the user's ESPN Fantasy Football team roster, current matchup, and league standings. Use this when users ask about their fantasy team, roster, who to start/sit, or want personalized fantasy advice. Requires ESPN_LEAGUE_ID (and optionally ESPN_S2 and ESPN_SWID for private leagues) to be set in secrets.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "year": {
+                            "type": "integer",
+                            "description": "Season year (default 2025)",
+                            "default": 2025
+                        }
+                    },
+                    "required": []
+                }
             }
         ]
         
@@ -1236,6 +1374,9 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 route_or_play_names = tool_input["route_or_play_names"]
                 diagram_type = tool_input["diagram_type"]
                 tool_result = self.generate_route_play_diagrams(route_or_play_names, diagram_type)
+            elif tool_name == "get_fantasy_team":
+                year = tool_input.get("year", 2025)
+                tool_result = self.get_fantasy_team(year=year)
             else:
                 tool_result = {"error": "Unknown tool"}
             
