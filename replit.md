@@ -68,13 +68,35 @@ Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, sec
 
 ### ESPN Fantasy Football Integration
 
-**ESPN Fantasy Football API**: Integrated via the `espn-api` Python library to fetch real-time fantasy team data including roster, matchups, and standings. Requires `ESPN_LEAGUE_ID` for all leagues, and `ESPN_S2` + `ESPN_SWID` authentication cookies for private leagues. The integration provides:
+**ESPN Fantasy Football API**: Integrated via the `espn-api` Python library to fetch real-time fantasy team data including roster, matchups, and standings. **Per-user credential storage** ensures each user's ESPN league credentials are stored in their individual database record. The integration provides:
 - **Real roster data**: Pulls actual team roster with player names, positions, points, and injury statuses
 - **Current matchup**: Shows live scores and projections for the current week's matchup
 - **League standings**: Displays win-loss records and league rankings
 - **Personalized advice**: AI uses actual roster data to provide start/sit recommendations and fantasy strategy
+- **Automatic credential reuse**: Once credentials are provided, they're automatically used for all future requests
 
-Setup requires users to provide their League ID and (for private leagues) authentication cookies from their browser's ESPN.com session. Error handling includes specific messages for invalid credentials, expired cookies, rate limiting, and league access issues.
+**First-Time User Onboarding Flow**:
+When users ask about fantasy football for the first time, the AI presents a structured onboarding message explaining:
+1. **Option 1**: Manually input roster (for users who prefer manual tracking)
+2. **Option 2**: Connect ESPN league (recommended for automatic roster sync)
+
+For ESPN integration, the AI provides:
+- Clear instructions on where to find League ID (in the ESPN URL)
+- Step-by-step guide to extract ESPN_S2 and SWID cookies from browser developer tools (required for private leagues only)
+- A markdown table format for users to fill out their credentials
+
+**Credential Storage & Security**:
+- Credentials are stored in each user's `fantasy_context` database field (JSON)
+- No global environment variables - each user has their own isolated credentials
+- Supports both public leagues (League ID only) and private leagues (League ID + ESPN_S2 + SWID)
+- Credentials are automatically injected when calling ESPN API tools
+
+**Two-Step Team Selection**:
+1. First call shows all teams in the league
+2. User selects their team by name
+3. System remembers team name for automatic use in future requests
+
+Error handling includes specific messages for invalid credentials, expired cookies, rate limiting, and league access issues.
 
 ### Python Dependencies
 

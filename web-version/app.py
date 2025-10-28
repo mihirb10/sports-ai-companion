@@ -78,10 +78,44 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 🎮 SPECIFIC RESPONSE PATTERNS:
 
 **Fantasy Football Questions:**
-• When user asks about fantasy, use get_fantasy_team to fetch their ESPN roster
+• FIRST TIME USERS (no saved credentials): When user asks about fantasy for the first time, respond EXACTLY like this:
+
+"First I need to know more about your team and league.
+
+**Option 1: Manually Input Your Roster**
+Tell me your players and I'll track them manually.
+
+**Option 2: Connect Your ESPN League** (Recommended)
+I can pull your actual roster, matchup scores, and league standings automatically.
+
+To connect, I need three pieces of information from ESPN:
+
+1. **League ID**: Found in your ESPN Fantasy Football league URL
+   - Go to your league on ESPN.com
+   - Look at the URL: `fantasy.espn.com/football/league?leagueId=XXXXXXXX`
+   - Copy the numbers after `leagueId=`
+
+2. **ESPN_S2 Cookie**: Required for private leagues (skip if public)
+   - While logged into ESPN.com, open browser Developer Tools (F12)
+   - Go to Application/Storage → Cookies → espn.com
+   - Find `espn_s2` cookie and copy its value (long string starting with AE)
+
+3. **SWID Cookie**: Required for private leagues (skip if public)
+   - Same location as ESPN_S2
+   - Find `SWID` cookie and copy its value (looks like {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX})
+
+Fill out the table below with your information:
+
+| Credential | Value |
+|------------|-------|
+| League ID  |       |
+| ESPN_S2    |       |
+| SWID       |       |
+
+Just paste your filled table or provide the values in your next message!"
+
 • CREDENTIALS: Check FANTASY FOOTBALL CONTEXT for saved ESPN credentials (espn_league_id, espn_s2, espn_swid)
-• If NO credentials saved, call get_fantasy_team anyway - it will ask them to provide their League ID
-• When user provides credentials (e.g., "My league ID is 12345678"), acknowledge and mention they're saved for future use
+• When user provides credentials, acknowledge and mention they're saved for future use
 • FIRST TIME: If they haven't told you their team name yet, call get_fantasy_team WITHOUT team_name parameter - this shows all teams in the league
 • AFTER SELECTION: Once they select their team, call get_fantasy_team WITH their team_name - this fetches their actual roster
 • IMPORTANT: The fantasy context stores their credentials and team_name for automatic use in future calls
@@ -1794,20 +1828,26 @@ def create_app():
                     import re
                     fantasy_context = json.loads(conversation.fantasy_context)
                     
-                    # Extract League ID (numbers after "league id" or "leagueId")
-                    league_id_match = re.search(r'(?:league\s*id\s*(?:is)?\s*|leagueId=)(\d+)', user_message, re.IGNORECASE)
+                    # Extract League ID - handles both natural language and table format
+                    # Table format: | League ID  | 123456 |
+                    # Natural format: "league id is 123456" or "leagueId=123456"
+                    league_id_match = re.search(r'(?:league\s*id\s*(?:is)?\s*[:|]?\s*|leagueId=)\s*(\d+)', user_message, re.IGNORECASE)
                     if league_id_match:
                         fantasy_context['espn_league_id'] = league_id_match.group(1)
                     
-                    # Extract ESPN S2 cookie (long string starting with AE)
-                    s2_match = re.search(r'(?:espn_?s2|s2)\s*(?:is|:|=)?\s*([A-Za-z0-9%+/=]{100,})', user_message, re.IGNORECASE)
+                    # Extract ESPN S2 cookie - handles both natural language and table format
+                    # Table format: | ESPN_S2    | AEBa...longstring... |
+                    # Natural format: "espn_s2 is AEBa..." or "s2: AEBa..."
+                    s2_match = re.search(r'(?:espn_?s2|s2)\s*[:|]?\s*([A-Za-z0-9%+/=]{50,})', user_message, re.IGNORECASE)
                     if s2_match:
-                        fantasy_context['espn_s2'] = s2_match.group(1)
+                        fantasy_context['espn_s2'] = s2_match.group(1).strip()
                     
-                    # Extract SWID (format: {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX})
-                    swid_match = re.search(r'(?:swid|SWID)\s*(?:is|:|=)?\s*(\{[A-Za-z0-9-]{36}\})', user_message, re.IGNORECASE)
+                    # Extract SWID - handles both natural language and table format
+                    # Table format: | SWID       | {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} |
+                    # Natural format: "swid is {XXX...}" or "SWID: {XXX...}"
+                    swid_match = re.search(r'(?:swid)\s*[:|]?\s*(\{[A-Za-z0-9-]{36}\})', user_message, re.IGNORECASE)
                     if swid_match:
-                        fantasy_context['espn_swid'] = swid_match.group(1)
+                        fantasy_context['espn_swid'] = swid_match.group(1).strip()
                     
                     # Save if any credentials were found
                     if league_id_match or s2_match or swid_match:
