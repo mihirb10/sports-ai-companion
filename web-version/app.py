@@ -1780,8 +1780,8 @@ def create_app():
                         context_message += f"\nESPN Fantasy Team: {espn_team_name}\n"
                         context_message += "ESPN Fantasy Roster (from live API):\n"
                         for player in fantasy_context['espn_roster']:
-                            status = f" ({player['injuryStatus']})" if player.get('injuryStatus') else ""
-                            context_message += f"  • {player['name']} ({player['position']}){status}: {player['points']} pts\n"
+                            status = f" ({player['injury_status']})" if player.get('injury_status') and player.get('injury_status') != 'ACTIVE' else ""
+                            context_message += f"  • {player['name']} ({player['position']}){status}: {player['points_total']} pts\n"
                         
                         if fantasy_context.get('espn_matchup'):
                             matchup = fantasy_context['espn_matchup']
