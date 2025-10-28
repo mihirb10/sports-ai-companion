@@ -78,11 +78,13 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 🎮 SPECIFIC RESPONSE PATTERNS:
 
 **Fantasy Football Questions:**
-• If ESPN Fantasy integration is set up (ESPN_LEAGUE_ID in secrets), use get_fantasy_team to fetch their real roster
+• When user asks about fantasy, use get_fantasy_team to fetch their ESPN roster
+• FIRST TIME ONLY: If they haven't told you their team name yet, call get_fantasy_team WITHOUT team_name parameter - this shows them all teams in the league to choose from
+• AFTER SELECTION: Once they select their team, call get_fantasy_team WITH their team_name - this fetches their actual roster
+• IMPORTANT: The fantasy context will store their team_name, so use it automatically in future calls (check FANTASY FOOTBALL CONTEXT for espn_team_name)
 • This gives you their actual team roster, current matchup, standings, and player injury statuses
 • Provide personalized start/sit recommendations based on their ACTUAL roster
 • If ESPN isn't set up and user asks about fantasy, ask "Who's on your team?" to provide manual advice
-• Once you know their team (from ESPN or manually), provide player-specific stats and matchup analysis
 
 **"Games Today" Questions:**
 • Use the get_live_scores tool to fetch current data
@@ -421,7 +423,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'updates': []
             }
 
-    def get_fantasy_team(self, league_id: str = None, espn_s2: str = None, swid: str = None, year: int = 2025) -> dict:
+    def get_fantasy_team(self, league_id: str = None, espn_s2: str = None, swid: str = None, year: int = 2025, team_name: str = None) -> dict:
         """Fetch user's ESPN Fantasy Football team roster, matchups, and standings.
         
         Args:
@@ -429,6 +431,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             espn_s2: ESPN s2 cookie (for private leagues)
             swid: ESPN SWID cookie (for private leagues)
             year: Season year (default 2025)
+            team_name: User's team name (optional - if not provided, returns all teams for selection)
             
         Returns:
             dict with team roster, matchups, standings, and player info
@@ -467,8 +470,47 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             # Get all teams
             teams = league.teams
             
-            # Find user's team (first team for now, could be customized)
-            my_team = teams[0]
+            # If no team_name provided, return list of all teams for user to select
+            if not team_name:
+                team_list = []
+                for team in teams:
+                    team_list.append({
+                        'team_name': team.team_name,
+                        'owner': team.owner if hasattr(team, 'owner') else 'N/A',
+                        'record': f"{team.wins}-{team.losses}",
+                        'points_for': round(team.points_for, 1)
+                    })
+                
+                return {
+                    'success': True,
+                    'needs_team_selection': True,
+                    'message': 'Please tell me which team is yours from the list below:',
+                    'available_teams': team_list,
+                    'league_name': league.settings.name if hasattr(league.settings, 'name') else 'Fantasy League',
+                    'setup_help': 'Reply with your team name so I can fetch your roster, matchup, and give you personalized advice.'
+                }
+            
+            # Find user's team by team name
+            my_team = None
+            for team in teams:
+                if team.team_name.lower() == team_name.lower():
+                    my_team = team
+                    break
+            
+            if not my_team:
+                # Fuzzy match - check if team_name is substring of any team name
+                for team in teams:
+                    if team_name.lower() in team.team_name.lower() or team.team_name.lower() in team_name.lower():
+                        my_team = team
+                        break
+            
+            if not my_team:
+                return {
+                    'success': False,
+                    'message': f'Could not find team "{team_name}" in this league.',
+                    'available_teams': [{'team_name': team.team_name, 'owner': team.owner if hasattr(team, 'owner') else 'N/A'} for team in teams],
+                    'setup_help': 'Please provide the exact team name from the list above.'
+                }
             
             # Build roster data
             roster = []
@@ -531,14 +573,54 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'note': 'Fantasy team data refreshed from ESPN Fantasy Football'
             }
             
-        except Exception as e:
-            logging.error(f"Error fetching ESPN Fantasy team: {e}")
+        except ValueError as ve:
+            logging.error(f"Invalid League ID format: {ve}")
             return {
                 'success': False,
-                'error': str(e),
-                'message': f'Could not fetch ESPN Fantasy team. Error: {str(e)}',
-                'setup_help': 'Make sure ESPN_LEAGUE_ID is set correctly. For private leagues, also set ESPN_S2 and ESPN_SWID cookies.'
+                'error': str(ve),
+                'message': 'Invalid League ID format. League ID must be a number.',
+                'setup_help': 'Check your ESPN_LEAGUE_ID in secrets. It should be only numbers (e.g., 12345678)'
             }
+        except Exception as e:
+            error_msg = str(e).lower()
+            logging.error(f"Error fetching ESPN Fantasy team: {e}")
+            
+            # Handle specific error cases
+            if 'league not found' in error_msg or '404' in error_msg:
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'message': 'League not found. Double-check your ESPN_LEAGUE_ID.',
+                    'setup_help': 'Verify your League ID is correct by checking your ESPN Fantasy Football league URL'
+                }
+            elif 'unauthorized' in error_msg or '401' in error_msg or '403' in error_msg:
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'message': 'Authentication failed. Your ESPN_S2 or ESPN_SWID cookies may be expired.',
+                    'setup_help': 'Private leagues require fresh cookies. Log into ESPN Fantasy Football and get new ESPN_S2 and ESPN_SWID values from browser cookies.'
+                }
+            elif 'timeout' in error_msg or 'timed out' in error_msg:
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'message': 'ESPN API request timed out. Try again in a moment.',
+                    'setup_help': 'ESPN API may be experiencing high traffic. Wait a few seconds and ask again.'
+                }
+            elif 'rate limit' in error_msg or '429' in error_msg:
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'message': 'ESPN API rate limit reached. Please wait a minute before trying again.',
+                    'setup_help': 'ESPN limits API requests. Wait 60 seconds before fetching your team again.'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'message': f'Could not fetch ESPN Fantasy team. Error: {str(e)}',
+                    'setup_help': 'Make sure ESPN_LEAGUE_ID is set correctly. For private leagues, also set ESPN_S2 and ESPN_SWID cookies.'
+                }
 
     def get_play_by_play(self, game_id: str) -> dict:
         """Get detailed play-by-play data for a specific game."""
@@ -1318,7 +1400,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             },
             {
                 "name": "get_fantasy_team",
-                "description": "Fetches the user's ESPN Fantasy Football team roster, current matchup, and league standings. Use this when users ask about their fantasy team, roster, who to start/sit, or want personalized fantasy advice. Requires ESPN_LEAGUE_ID (and optionally ESPN_S2 and ESPN_SWID for private leagues) to be set in secrets.",
+                "description": "Fetches the user's ESPN Fantasy Football team roster, current matchup, and league standings. Use this when users ask about their fantasy team, roster, who to start/sit, or want personalized fantasy advice. Requires ESPN_LEAGUE_ID (and optionally ESPN_S2 and ESPN_SWID for private leagues) to be set in secrets. If team_name is not provided and user hasn't selected their team yet, this will return a list of all teams in the league for the user to choose from.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -1326,6 +1408,10 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                             "type": "integer",
                             "description": "Season year (default 2025)",
                             "default": 2025
+                        },
+                        "team_name": {
+                            "type": "string",
+                            "description": "The user's fantasy team name (optional - omit if user hasn't told you their team name yet)"
                         }
                     },
                     "required": []
@@ -1376,7 +1462,11 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 tool_result = self.generate_route_play_diagrams(route_or_play_names, diagram_type)
             elif tool_name == "get_fantasy_team":
                 year = tool_input.get("year", 2025)
-                tool_result = self.get_fantasy_team(year=year)
+                team_name = tool_input.get("team_name", None)
+                tool_result = self.get_fantasy_team(year=year, team_name=team_name)
+                # Track that we used this tool
+                tool_usage_data['used_get_fantasy_team'] = True
+                tool_usage_data['fantasy_team_data'] = tool_result
             else:
                 tool_result = {"error": "Unknown tool"}
             
@@ -1575,10 +1665,37 @@ def create_app():
             # If fantasy football question, prepend fantasy context
             if is_fantasy_question:
                 fantasy_context = json.loads(conversation.fantasy_context)
-                if fantasy_context.get('my_team') or fantasy_context.get('interested_players') or fantasy_context.get('trade_history'):
+                has_context = (fantasy_context.get('my_team') or 
+                             fantasy_context.get('interested_players') or 
+                             fantasy_context.get('trade_history') or
+                             fantasy_context.get('espn_roster'))
+                
+                if has_context:
                     context_message = "FANTASY FOOTBALL CONTEXT:\n"
+                    
+                    # ESPN roster data takes precedence if available
+                    if fantasy_context.get('espn_roster'):
+                        espn_team_name = fantasy_context.get('espn_team_name', 'Unknown')
+                        context_message += f"ESPN Fantasy Team: {espn_team_name}\n"
+                        context_message += "ESPN Fantasy Roster (from live API):\n"
+                        for player in fantasy_context['espn_roster']:
+                            status = f" ({player['injuryStatus']})" if player.get('injuryStatus') else ""
+                            context_message += f"  • {player['name']} ({player['position']}){status}: {player['points']} pts\n"
+                        
+                        if fantasy_context.get('espn_matchup'):
+                            matchup = fantasy_context['espn_matchup']
+                            context_message += f"\nCurrent Matchup: {matchup.get('my_score', 0)} - {matchup.get('opponent_score', 0)} vs {matchup.get('opponent_name', 'Opponent')}\n"
+                        
+                        if fantasy_context.get('espn_standings'):
+                            standings = fantasy_context['espn_standings']
+                            context_message += f"League Standing: {standings.get('wins', 0)}-{standings.get('losses', 0)}, Rank: {standings.get('rank', 'N/A')}\n"
+                        
+                        # Tell AI to use this team name in future get_fantasy_team calls
+                        context_message += f"\nNOTE: When calling get_fantasy_team, use team_name='{espn_team_name}' parameter\n"
+                    
+                    # Manually entered team data (for users without ESPN integration)
                     if fantasy_context.get('my_team'):
-                        context_message += f"My Team: {', '.join(fantasy_context['my_team'])}\n"
+                        context_message += f"My Team (manual): {', '.join(fantasy_context['my_team'])}\n"
                     if fantasy_context.get('interested_players'):
                         context_message += f"Players I'm Interested In: {', '.join(fantasy_context['interested_players'])}\n"
                     if fantasy_context.get('trade_history'):
@@ -1603,6 +1720,23 @@ def create_app():
             elif is_affirmative and recent_analysis_context:
                 conversation.recent_analysis_context = '{}'
                 db.session.commit()
+            
+            # If ESPN fantasy team was fetched, update fantasy context with roster data
+            if tool_usage.get('used_get_fantasy_team'):
+                fantasy_team_data = tool_usage.get('fantasy_team_data', {})
+                if fantasy_team_data.get('success') and not fantasy_team_data.get('needs_team_selection'):
+                    fantasy_context = json.loads(conversation.fantasy_context)
+                    
+                    # Store ESPN roster data separately from manually entered team
+                    fantasy_context['espn_roster'] = fantasy_team_data.get('roster', [])
+                    fantasy_context['espn_matchup'] = fantasy_team_data.get('matchup', {})
+                    fantasy_context['espn_standings'] = fantasy_team_data.get('standings', {})
+                    fantasy_context['espn_team_name'] = fantasy_team_data.get('team_name')  # Store team name for future calls
+                    fantasy_context['last_espn_fetch'] = datetime.now().isoformat()
+                    
+                    # Update database
+                    conversation.fantasy_context = json.dumps(fantasy_context)
+                    db.session.commit()
             
             # If fantasy football question, extract and update fantasy context
             if is_fantasy_question:

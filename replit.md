@@ -2,7 +2,7 @@
 
 ## Overview
 
-SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with interactive visual diagrams (displayed as thumbnail galleries with fullscreen lightbox viewing), proactive fantasy injury monitoring, integration of NFL news and injury reports, and detailed game analysis using play-by-play data. Route/play analysis covers the entire current season (9 games) by default. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
+SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with interactive visual diagrams (displayed as thumbnail galleries with fullscreen lightbox viewing), proactive fantasy injury monitoring, integration of NFL news and injury reports, detailed game analysis using play-by-play data, and **ESPN Fantasy Football API integration** for real-time roster management and personalized fantasy advice. Route/play analysis covers the entire current season (9 games) by default. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
 
 **Visual Diagrams** are shown automatically inline when users:
 - Ask what a specific route, play, or defensive coverage is (e.g., "What's a post route?", "What is Cover 2?")
@@ -66,9 +66,19 @@ Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, sec
 
 **ESPN API**: Provides live NFL scores, game statuses, team statistics, and play-by-play data. This is a public endpoint requiring no API key and is integrated via tool calling.
 
+### ESPN Fantasy Football Integration
+
+**ESPN Fantasy Football API**: Integrated via the `espn-api` Python library to fetch real-time fantasy team data including roster, matchups, and standings. Requires `ESPN_LEAGUE_ID` for all leagues, and `ESPN_S2` + `ESPN_SWID` authentication cookies for private leagues. The integration provides:
+- **Real roster data**: Pulls actual team roster with player names, positions, points, and injury statuses
+- **Current matchup**: Shows live scores and projections for the current week's matchup
+- **League standings**: Displays win-loss records and league rankings
+- **Personalized advice**: AI uses actual roster data to provide start/sit recommendations and fantasy strategy
+
+Setup requires users to provide their League ID and (for private leagues) authentication cookies from their browser's ESPN.com session. Error handling includes specific messages for invalid credentials, expired cookies, rate limiting, and league access issues.
+
 ### Python Dependencies
 
-Key Python libraries include `flask`, `flask-sqlalchemy`, `flask-login`, `anthropic`, `psycopg2-binary`, `sqlalchemy`, `requests`, and `gunicorn` for production deployment.
+Key Python libraries include `flask`, `flask-sqlalchemy`, `flask-login`, `anthropic`, `psycopg2-binary`, `sqlalchemy`, `requests`, `espn-api` (for ESPN Fantasy Football integration), `feedparser` (for NFL news), `matplotlib` (for route/play diagrams), and `gunicorn` for production deployment.
 
 ### Hosting Platform
 
