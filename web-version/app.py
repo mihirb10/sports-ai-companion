@@ -440,11 +440,14 @@ def create_app():
             if not user_message:
                 return jsonify({'error': 'No message provided'}), 400
             
-            conversation = get_or_create_conversation(current_user.id)
-            conversation_history = json.loads(conversation.history)
+            # Start with empty history each time (no retained context)
+            # This keeps API costs low and avoids rate limits
+            conversation_history = []
             
             response, updated_history = companion.chat(user_message, conversation_history)
             
+            # Still save to database for user's chat history display
+            conversation = get_or_create_conversation(current_user.id)
             conversation.history = json.dumps(updated_history)
             db.session.commit()
             

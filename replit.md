@@ -12,12 +12,16 @@ SportsAI is a Flask-based web application that provides an intelligent conversat
 - **Enhanced data depth**: Scoring play details, drive efficiency metrics (yards/plays/time), top performer stats from specific games
 - Agent intelligently chains tools: fetches game IDs from live scores, then retrieves detailed play-by-play data
 
+**October 28, 2025**: Removed retained context to optimize API usage
+- **No conversation history fed back**: Each message is now independent to avoid rate limits and reduce API costs
+- Previous context retention was causing org rate limit issues and excessively long prompts
+- Chat history still saved in database for user reference/display purposes
+
 **October 28, 2025**: Major AI personality redesign + logout button
 - **Transformed agent into stats-focused sports nerd**: Leads with statistics and numbers, uses extensive bullet points, includes emojis to highlight data (📊 📈 🔥)
 - **Reduced chattiness**: Agent asks fewer questions, lets user drive conversation, only prompts when topic naturally concludes
 - **Data-first approach**: Every response prioritizes quantifiable facts over feelings/opinions
 - Added logout button in top right corner of chat interface
-- Full conversation context retained across all interactions (already implemented, verified)
 
 **October 28, 2025**: Added user authentication and database persistence
 - Integrated Replit Auth for Google and email/password login
