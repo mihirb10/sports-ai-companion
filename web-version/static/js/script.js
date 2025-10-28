@@ -1,7 +1,6 @@
 const chatContainer = document.getElementById('chatContainer');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
-const resetBtn = document.getElementById('resetBtn');
 const typingIndicator = document.getElementById('typingIndicator');
 
 let conversationStarted = false;
@@ -121,27 +120,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-async function resetConversation() {
-    if (!confirm('Start a new conversation?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('/reset', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (response.ok) {
-            location.reload();
-        }
-    } catch (error) {
-        alert('Error resetting conversation: ' + error.message);
-    }
-}
-
 sendBtn.addEventListener('click', sendMessage);
 
 userInput.addEventListener('keydown', (e) => {
@@ -154,17 +132,6 @@ userInput.addEventListener('keydown', (e) => {
 userInput.addEventListener('input', function() {
     this.style.height = 'auto';
     this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-});
-
-resetBtn.addEventListener('click', resetConversation);
-
-document.querySelectorAll('.prompt-card').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const question = this.getAttribute('data-question');
-        userInput.value = question;
-        userInput.focus();
-        sendMessage();
-    });
 });
 
 userInput.focus();
