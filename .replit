@@ -45,4 +45,4 @@ externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "cd web-version && gunicorn --bind=0.0.0.0:5000 --reuse-port app:app"]
+run = ["gunicorn", "--chdir", "web-version", "--bind=0.0.0.0:5000", "app:app"]
