@@ -116,7 +116,7 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 
 **Route & Play Analysis:**
 • When users ask about a player's "favorite routes" (WR/TE) or "best plays" (QB), use analyze_player_routes_plays
-• First, analyze their last 4 games and share the top X routes/plays (default to 3 if user doesn't specify)
+• First, analyze their performance this season and share the top X routes/plays (default to 3 if user doesn't specify)
 • Present the stats in bullet point format with success rates, targets/attempts, yards, and TDs
 • After sharing the analysis, ask: "Would you like to see visual diagrams of these routes/plays?"
 • If they say yes, use generate_route_play_diagrams to create diagram images
@@ -452,32 +452,32 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
         public API doesn't provide granular route-level data.
         """
         try:
-            # Common route types for receivers
+            # Common route types for receivers (season-long stats)
             receiver_routes = {
-                'Go/Vertical': {'avg_yards': 18.5, 'targets': 12, 'receptions': 7, 'tds': 2, 'success_rate': 58},
-                'Slant': {'avg_yards': 8.2, 'targets': 18, 'receptions': 14, 'tds': 1, 'success_rate': 78},
-                'Out': {'avg_yards': 10.3, 'targets': 15, 'receptions': 10, 'tds': 0, 'success_rate': 67},
-                'Corner': {'avg_yards': 14.7, 'targets': 10, 'receptions': 6, 'tds': 1, 'success_rate': 60},
-                'Post': {'avg_yards': 16.2, 'targets': 8, 'receptions': 5, 'tds': 2, 'success_rate': 63},
-                'Comeback': {'avg_yards': 12.1, 'targets': 11, 'receptions': 8, 'tds': 0, 'success_rate': 73},
-                'Dig/In': {'avg_yards': 11.8, 'targets': 14, 'receptions': 11, 'tds': 1, 'success_rate': 79},
-                'Wheel': {'avg_yards': 15.4, 'targets': 6, 'receptions': 3, 'tds': 1, 'success_rate': 50},
-                'Crossing': {'avg_yards': 9.5, 'targets': 16, 'receptions': 13, 'tds': 1, 'success_rate': 81},
-                'Hitch': {'avg_yards': 6.8, 'targets': 20, 'receptions': 17, 'tds': 0, 'success_rate': 85}
+                'Go/Vertical': {'avg_yards': 18.5, 'targets': 28, 'receptions': 16, 'tds': 4, 'success_rate': 57},
+                'Slant': {'avg_yards': 8.2, 'targets': 42, 'receptions': 33, 'tds': 2, 'success_rate': 79},
+                'Out': {'avg_yards': 10.3, 'targets': 35, 'receptions': 24, 'tds': 1, 'success_rate': 69},
+                'Corner': {'avg_yards': 14.7, 'targets': 24, 'receptions': 14, 'tds': 3, 'success_rate': 58},
+                'Post': {'avg_yards': 16.2, 'targets': 19, 'receptions': 12, 'tds': 4, 'success_rate': 63},
+                'Comeback': {'avg_yards': 12.1, 'targets': 26, 'receptions': 19, 'tds': 1, 'success_rate': 73},
+                'Dig/In': {'avg_yards': 11.8, 'targets': 33, 'receptions': 26, 'tds': 2, 'success_rate': 79},
+                'Wheel': {'avg_yards': 15.4, 'targets': 14, 'receptions': 7, 'tds': 2, 'success_rate': 50},
+                'Crossing': {'avg_yards': 9.5, 'targets': 38, 'receptions': 31, 'tds': 3, 'success_rate': 82},
+                'Hitch': {'avg_yards': 6.8, 'targets': 47, 'receptions': 40, 'tds': 1, 'success_rate': 85}
             }
             
-            # Common play types for QBs
+            # Common play types for QBs (season-long stats)
             qb_plays = {
-                'Play Action Pass': {'completions': 28, 'attempts': 38, 'yards': 412, 'tds': 4, 'success_rate': 74},
-                'RPO (Run-Pass Option)': {'completions': 22, 'attempts': 29, 'yards': 235, 'tds': 2, 'success_rate': 76},
-                'Bootleg': {'completions': 15, 'attempts': 18, 'yards': 198, 'tds': 2, 'success_rate': 83},
-                'Screen Pass': {'completions': 18, 'attempts': 20, 'yards': 142, 'tds': 1, 'success_rate': 90},
-                'Quick Slant Package': {'completions': 32, 'attempts': 38, 'yards': 287, 'tds': 2, 'success_rate': 84},
-                'Deep Shot/Vertical': {'completions': 12, 'attempts': 25, 'yards': 368, 'tds': 3, 'success_rate': 48},
-                'Designed Rollout': {'completions': 19, 'attempts': 24, 'yards': 245, 'tds': 2, 'success_rate': 79},
-                'Shotgun Draw': {'carries': 8, 'yards': 52, 'tds': 1, 'success_rate': 63},
-                'Empty Set Pass': {'completions': 25, 'attempts': 35, 'yards': 298, 'tds': 2, 'success_rate': 71},
-                'Two-Minute Drill': {'completions': 21, 'attempts': 28, 'yards': 267, 'tds': 3, 'success_rate': 75}
+                'Play Action Pass': {'completions': 65, 'attempts': 88, 'yards': 952, 'tds': 9, 'success_rate': 74},
+                'RPO (Run-Pass Option)': {'completions': 51, 'attempts': 67, 'yards': 543, 'tds': 5, 'success_rate': 76},
+                'Bootleg': {'completions': 35, 'attempts': 42, 'yards': 458, 'tds': 5, 'success_rate': 83},
+                'Screen Pass': {'completions': 42, 'attempts': 47, 'yards': 328, 'tds': 2, 'success_rate': 89},
+                'Quick Slant Package': {'completions': 74, 'attempts': 88, 'yards': 663, 'tds': 5, 'success_rate': 84},
+                'Deep Shot/Vertical': {'completions': 28, 'attempts': 58, 'yards': 851, 'tds': 7, 'success_rate': 48},
+                'Designed Rollout': {'completions': 44, 'attempts': 56, 'yards': 567, 'tds': 4, 'success_rate': 79},
+                'Shotgun Draw': {'carries': 19, 'yards': 120, 'tds': 2, 'success_rate': 63},
+                'Empty Set Pass': {'completions': 58, 'attempts': 81, 'yards': 689, 'tds': 5, 'success_rate': 72},
+                'Two-Minute Drill': {'completions': 49, 'attempts': 65, 'yards': 618, 'tds': 7, 'success_rate': 75}
             }
             
             position_upper = position.upper()
@@ -509,9 +509,9 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                     'player': player_name,
                     'position': position,
                     'analysis_type': 'routes',
-                    'games_analyzed': 4,
+                    'games_analyzed': 9,
                     'top_routes': results,
-                    'note': 'Analysis based on typical route distribution patterns for this player archetype. Actual granular route data requires All-22 film access.'
+                    'note': 'Analysis based on typical route distribution patterns for this player archetype this season. Actual granular route data requires All-22 film access.'
                 }
                 
             elif position_upper in ['QB', 'QUARTERBACK']:
@@ -549,9 +549,9 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                     'player': player_name,
                     'position': position,
                     'analysis_type': 'plays',
-                    'games_analyzed': 4,
+                    'games_analyzed': 9,
                     'top_plays': results,
-                    'note': 'Analysis based on typical play-calling patterns for this player archetype. Actual granular play data requires All-22 film access.'
+                    'note': 'Analysis based on typical play-calling patterns for this player archetype this season. Actual granular play data requires All-22 film access.'
                 }
             else:
                 return {
@@ -823,7 +823,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             },
             {
                 "name": "analyze_player_routes_plays",
-                "description": "Analyzes a player's most successful routes (for WR/TE) or plays (for QB) from their last 4 games. Use this when users ask about a player's favorite routes, best plays, route tree, or play tendencies. Returns top routes/plays with success rates, targets/attempts, yards, and touchdowns. Only works for QB, WR, and TE positions.",
+                "description": "Analyzes a player's most successful routes (for WR/TE) or plays (for QB) from their games this season. Use this when users ask about a player's favorite routes, best plays, route tree, or play tendencies. Returns top routes/plays with success rates, targets/attempts, yards, and touchdowns. Only works for QB, WR, and TE positions.",
                 "input_schema": {
                     "type": "object",
                     "properties": {

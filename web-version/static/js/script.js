@@ -158,10 +158,10 @@ function formatMessage(text) {
     
     text = escapeHtml(text);
     
-    // Replace image placeholders with actual img tags
+    // Replace image placeholders with actual img tags (clickable thumbnails)
     images.forEach(({ alt, src, placeholder }) => {
         const escapedAlt = alt || 'Diagram';
-        const imgTag = `<img src="${src}" alt="${escapedAlt}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;">`;
+        const imgTag = `<img src="${src}" alt="${escapedAlt}" class="diagram-thumbnail" data-full-src="${src}">`;
         text = text.replace(placeholder, imgTag);
     });
     
@@ -225,3 +225,43 @@ async function checkHealth() {
 }
 
 checkHealth();
+
+// Image Lightbox functionality
+const imageModal = document.getElementById('imageModal');
+const modalImage = document.getElementById('modalImage');
+const modalClose = document.getElementById('modalClose');
+
+// Use event delegation to handle image clicks
+chatContainer.addEventListener('click', (e) => {
+    if (e.target.tagName === 'IMG' && e.target.classList.contains('diagram-thumbnail')) {
+        openLightbox(e.target.src);
+    }
+});
+
+function openLightbox(src) {
+    modalImage.src = src;
+    imageModal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent scrolling
+}
+
+function closeLightbox() {
+    imageModal.classList.remove('active');
+    document.body.style.overflow = ''; // Restore scrolling
+}
+
+// Close on X button click
+modalClose.addEventListener('click', closeLightbox);
+
+// Close on clicking outside the image
+imageModal.addEventListener('click', (e) => {
+    if (e.target === imageModal) {
+        closeLightbox();
+    }
+});
+
+// Close on ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && imageModal.classList.contains('active')) {
+        closeLightbox();
+    }
+});
