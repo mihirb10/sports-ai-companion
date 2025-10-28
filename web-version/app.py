@@ -15,6 +15,11 @@ from datetime import datetime
 import logging
 import feedparser
 import re
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import hashlib
 
 from models import db, User, Conversation
 from replit_auth import login_manager, make_replit_blueprint, require_login
@@ -114,7 +119,9 @@ You are NOT a chatty friend. You are a walking statistical database and tactical
 • First, analyze their last 4 games and share the top X routes/plays (default to 3 if user doesn't specify)
 • Present the stats in bullet point format with success rates, targets/attempts, yards, and TDs
 • After sharing the analysis, ask: "Would you like to see visual diagrams of these routes/plays?"
-• Only mention diagrams AFTER sharing the stats - don't promise them upfront
+• If they say yes, use generate_route_play_diagrams to create diagram images
+• The tool returns URLs - include them in your response as markdown images: ![Route Name](url)
+• Each diagram shows the route pattern or play formation visually
 • Note: Route/play data is simulated based on typical NFL patterns since granular All-22 data isn't publicly available
 
 Example good response:
@@ -559,6 +566,173 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'message': f'Could not analyze routes/plays for {player_name}'
             }
 
+    def generate_route_play_diagrams(self, route_or_play_names: list, diagram_type: str) -> dict:
+        """Generate visual diagrams for specific routes or plays and save to static folder.
+        
+        Args:
+            route_or_play_names: List of route names (e.g., ['Slant', 'Post']) or play names
+            diagram_type: Either 'route' for WR/TE routes or 'play' for QB plays
+        
+        Returns:
+            dict with diagram URLs
+        """
+        try:
+            diagrams = []
+            
+            for name in route_or_play_names:
+                # Create unique filename based on type and name
+                hash_input = f"{diagram_type}_{name}".encode()
+                filename = f"{diagram_type}_{hashlib.md5(hash_input).hexdigest()[:8]}.png"
+                filepath = f"web-version/static/diagrams/{filename}"
+                url = f"/static/diagrams/{filename}"
+                
+                # Check if diagram already exists
+                if os.path.exists(filepath):
+                    diagrams.append({
+                        'name': name,
+                        'url': url,
+                        'success': True
+                    })
+                    continue
+                
+                # Generate new diagram
+                try:
+                    fig, ax = plt.subplots(figsize=(10, 8))
+                    ax.set_xlim(-5, 25)
+                    ax.set_ylim(0, 30)
+                    ax.set_aspect('equal')
+                    ax.axis('off')
+                    
+                    if diagram_type == 'route':
+                        # Draw route diagram
+                        # Line of scrimmage
+                        ax.plot([0, 0], [0, 30], 'k-', linewidth=2, label='Line of Scrimmage')
+                        
+                        # QB position
+                        ax.plot(0, 15, 'ro', markersize=15, label='QB')
+                        ax.text(-2, 15, 'QB', fontsize=12, ha='right', va='center', fontweight='bold')
+                        
+                        # WR starting position
+                        ax.plot(0, 10, 'bo', markersize=12, label='WR')
+                        ax.text(-2, 10, 'WR', fontsize=10, ha='right', va='center')
+                        
+                        # Draw yard markers
+                        for y in [5, 10, 15, 20]:
+                            ax.plot([y, y], [0, 30], 'gray', linewidth=0.5, alpha=0.3)
+                            ax.text(y, -1, f'{y}y', fontsize=8, ha='center', color='gray')
+                        
+                        # Draw specific route patterns
+                        if 'slant' in name.lower():
+                            # Slant route: 5 yards forward, then diagonal
+                            ax.arrow(0, 10, 5, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(5, 10, 5, 5, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'post' in name.lower():
+                            # Post route: 12 yards forward, then diagonal toward middle
+                            ax.arrow(0, 10, 12, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(12, 10, 6, 5, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'go' in name.lower() or 'vertical' in name.lower():
+                            # Go route: straight vertical
+                            ax.arrow(0, 10, 20, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'out' in name.lower():
+                            # Out route: 10 yards forward, then perpendicular outside
+                            ax.arrow(0, 10, 10, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(10, 10, 0, -6, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'corner' in name.lower():
+                            # Corner route: 12 yards forward, then diagonal outside
+                            ax.arrow(0, 10, 12, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(12, 10, 6, -5, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'comeback' in name.lower():
+                            # Comeback route: 15 yards forward, then back toward QB
+                            ax.arrow(0, 10, 15, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(15, 10, -3, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'dig' in name.lower() or 'in' in name.lower():
+                            # Dig/In route: 10 yards forward, then across middle
+                            ax.arrow(0, 10, 10, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(10, 10, 0, 6, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'wheel' in name.lower():
+                            # Wheel route: curved upfield
+                            from matplotlib.patches import FancyBboxPatch, Arc
+                            arc = Arc((5, 10), 10, 16, angle=0, theta1=0, theta2=60, color='blue', linewidth=2)
+                            ax.add_patch(arc)
+                            ax.arrow(8, 18, 2, 2, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'crossing' in name.lower() or 'cross' in name.lower():
+                            # Crossing route: shallow across field
+                            ax.arrow(0, 10, 8, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(8, 10, 0, 8, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        elif 'hitch' in name.lower():
+                            # Hitch route: 5-7 yards forward, then back
+                            ax.arrow(0, 10, 6, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                            ax.arrow(6, 10, -1.5, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        else:
+                            # Default: simple forward route
+                            ax.arrow(0, 10, 12, 0, head_width=0.8, head_length=0.5, fc='blue', ec='blue', linewidth=2)
+                        
+                        ax.set_title(f'{name} Route', fontsize=16, fontweight='bold', pad=20)
+                        
+                    elif diagram_type == 'play':
+                        # Draw play diagram (simplified X's and O's)
+                        # Offensive line
+                        for i, pos in enumerate(['LT', 'LG', 'C', 'RG', 'RT']):
+                            x = 5 + i * 2
+                            ax.plot(x, 15, 'ko', markersize=10)
+                            ax.text(x, 13.5, pos, fontsize=8, ha='center')
+                        
+                        # QB
+                        ax.plot(13, 10, 'ro', markersize=12)
+                        ax.text(13, 8.5, 'QB', fontsize=9, ha='center', fontweight='bold')
+                        
+                        # Receivers
+                        ax.plot(3, 15, 'bo', markersize=10)
+                        ax.text(3, 13.5, 'WR', fontsize=8, ha='center')
+                        ax.plot(17, 15, 'bo', markersize=10)
+                        ax.text(17, 13.5, 'WR', fontsize=8, ha='center')
+                        
+                        # RB
+                        ax.plot(13, 12, 'go', markersize=10)
+                        ax.text(13, 10.5, 'RB', fontsize=8, ha='center')
+                        
+                        # Defense (simple representation)
+                        for i in range(7):
+                            x = 4 + i * 2.5
+                            ax.plot(x, 20, 'rx', markersize=10, markeredgewidth=2)
+                        
+                        ax.set_title(f'{name}', fontsize=14, fontweight='bold', pad=20)
+                    
+                    # Save diagram
+                    plt.tight_layout()
+                    plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
+                    plt.close(fig)
+                    
+                    diagrams.append({
+                        'name': name,
+                        'url': url,
+                        'success': True
+                    })
+                    
+                except Exception as draw_error:
+                    logging.error(f"Error drawing diagram for {name}: {draw_error}")
+                    plt.close('all')  # Clean up any open figures
+                    diagrams.append({
+                        'name': name,
+                        'error': str(draw_error),
+                        'success': False
+                    })
+            
+            return {
+                'success': True,
+                'diagrams': diagrams,
+                'count': len([d for d in diagrams if d.get('success')]),
+                'note': 'Diagrams are simplified tactical illustrations for educational purposes.'
+            }
+            
+        except Exception as e:
+            logging.error(f"Error generating diagrams: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Could not generate diagrams at this time'
+            }
+
     def chat(self, user_message: str, conversation_history: list) -> tuple:
         """Main chat interface with tool use."""
         conversation_history.append({
@@ -655,6 +829,26 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                     },
                     "required": ["player_name", "position"]
                 }
+            },
+            {
+                "name": "generate_route_play_diagrams",
+                "description": "Generates visual diagrams for specific routes (WR/TE) or plays (QB). Use this AFTER showing route/play statistics when the user requests to see diagrams. Returns image URLs that can be embedded in markdown. Each diagram shows the route pattern or play formation visually with arrows, positions, and yard markers.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "route_or_play_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of route names (e.g., ['Slant', 'Post', 'Corner']) or play names (e.g., ['Play Action Pass', 'Bootleg']) to generate diagrams for"
+                        },
+                        "diagram_type": {
+                            "type": "string",
+                            "enum": ["route", "play"],
+                            "description": "Type of diagram: 'route' for WR/TE routes or 'play' for QB plays"
+                        }
+                    },
+                    "required": ["route_or_play_names", "diagram_type"]
+                }
             }
         ]
         
@@ -688,6 +882,10 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 position = tool_input["position"]
                 num_results = tool_input.get("num_results", 3)
                 tool_result = self.analyze_player_routes_plays(player_name, position, num_results)
+            elif tool_name == "generate_route_play_diagrams":
+                route_or_play_names = tool_input["route_or_play_names"]
+                diagram_type = tool_input["diagram_type"]
+                tool_result = self.generate_route_play_diagrams(route_or_play_names, diagram_type)
             else:
                 tool_result = {"error": "Unknown tool"}
             
