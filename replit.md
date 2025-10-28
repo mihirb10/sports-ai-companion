@@ -16,7 +16,7 @@ SportsAI integrates Replit Auth for OAuth2-based authentication, supporting Goog
 
 ### Database Architecture
 
-The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy ORM. The schema includes tables for `Users` (storing Replit Auth IDs and profile info), `OAuth` (for tokens and browser session keys), and `Conversations` (storing serialized JSON conversation history per user). Conversation records are lazily created and linked to `user_id` for persistence.
+The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy ORM. The schema includes tables for `Users` (storing Replit Auth IDs and profile info), `OAuth` (for tokens and browser session keys), and `Conversations` (storing serialized JSON conversation history, fantasy context, and recent analysis context per user). The `recent_analysis_context` field enables the AI to remember route/play analysis when users respond affirmatively to follow-up questions. Conversation records are lazily created and linked to `user_id` for persistence.
 
 ### Frontend Architecture
 
