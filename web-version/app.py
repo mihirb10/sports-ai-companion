@@ -553,7 +553,7 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 roster.append({
                     'name': player.name,
                     'position': player.position,
-                    'slot': player.slot_position,
+                    'slot': player.slot_position if hasattr(player, 'slot_position') else player.position,
                     'team': player.proTeam if hasattr(player, 'proTeam') else 'N/A',
                     'points_total': round(player.total_points, 1) if hasattr(player, 'total_points') else 0,
                     'projected_points': round(player.projected_total_points, 1) if hasattr(player, 'projected_total_points') else 0,
