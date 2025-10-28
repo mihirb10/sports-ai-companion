@@ -1197,6 +1197,13 @@ Return ONLY the JSON, nothing else."""
             if injury_update_message:
                 final_response = injury_update_message + response
             
+            # DEBUG: Log the response to check for images
+            logging.info(f"RESPONSE TEXT: {final_response[:500]}")
+            if '![' in final_response:
+                logging.info("✓ Response contains markdown images")
+            else:
+                logging.warning("✗ Response does NOT contain markdown images")
+            
             return jsonify({
                 'response': final_response,
                 'success': True
