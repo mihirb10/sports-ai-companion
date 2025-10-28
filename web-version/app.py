@@ -579,11 +579,15 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
         try:
             diagrams = []
             
+            # Get the absolute path to the diagrams directory
+            diagrams_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'diagrams')
+            os.makedirs(diagrams_dir, exist_ok=True)
+            
             for name in route_or_play_names:
                 # Create unique filename based on type and name
                 hash_input = f"{diagram_type}_{name}".encode()
                 filename = f"{diagram_type}_{hashlib.md5(hash_input).hexdigest()[:8]}.png"
-                filepath = f"web-version/static/diagrams/{filename}"
+                filepath = os.path.join(diagrams_dir, filename)
                 url = f"/static/diagrams/{filename}"
                 
                 # Check if diagram already exists
