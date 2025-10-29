@@ -22,7 +22,6 @@ import matplotlib.patches as patches
 import hashlib
 from espn_api.football import League
 from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
 
 from models import db, User, Conversation
 from replit_auth import login_manager, make_replit_blueprint, require_login
@@ -568,58 +567,18 @@ OTHER TOOLS:
             dict with video results including titles, video_ids, thumbnails, and embed codes
         """
         try:
-            # Get YouTube access token from Replit integration
-            hostname = os.getenv('REPLIT_CONNECTORS_HOSTNAME')
-            x_replit_token = (
-                'repl ' + os.getenv('REPL_IDENTITY') if os.getenv('REPL_IDENTITY')
-                else 'depl ' + os.getenv('WEB_REPL_RENEWAL') if os.getenv('WEB_REPL_RENEWAL')
-                else None
-            )
+            # Get YouTube API key from environment
+            youtube_api_key = os.getenv('YOUTUBE_API_KEY')
             
-            if not x_replit_token:
+            if not youtube_api_key:
                 return {
                     'success': False,
-                    'message': 'YouTube integration not configured',
+                    'message': 'YouTube API key not configured. Please add YOUTUBE_API_KEY to your Replit Secrets.',
                     'videos': []
                 }
             
-            # Fetch connection settings
-            conn_response = requests.get(
-                f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=youtube',
-                headers={
-                    'Accept': 'application/json',
-                    'X-Replit-Token': x_replit_token
-                }
-            )
-            
-            if conn_response.status_code != 200:
-                return {
-                    'success': False,
-                    'message': 'Could not access YouTube connection',
-                    'videos': []
-                }
-            
-            connection_data = conn_response.json()
-            connection_settings = connection_data.get('items', [])[0] if connection_data.get('items') else None
-            
-            if not connection_settings:
-                return {
-                    'success': False,
-                    'message': 'YouTube not connected',
-                    'videos': []
-                }
-            
-            access_token = connection_settings.get('settings', {}).get('access_token')
-            
-            if not access_token:
-                return {
-                    'success': False,
-                    'message': 'YouTube access token not available',
-                    'videos': []
-                }
-            
-            # Build YouTube client with access token
-            youtube = build('youtube', 'v3', credentials=Credentials(token=access_token))
+            # Build YouTube client with API key
+            youtube = build('youtube', 'v3', developerKey=youtube_api_key)
             
             # Search for videos with NFL-focused query
             search_query = f"NFL {query} highlights"
