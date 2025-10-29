@@ -293,7 +293,7 @@ body {
 
 .input-wrapper {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 12px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -323,7 +323,6 @@ body {
 
 #userInput::placeholder {
     color: var(--text-secondary);
-    text-align: center;
 }
 
 .send-btn {
