@@ -639,17 +639,38 @@ function updateChatAvatars() {
 
 const scoresContent = document.getElementById('scoresContent');
 const weekSelector = document.getElementById('weekSelector');
-let currentWeekData = null;
+let currentWeekNumber = null;
 
 // Load scores data
 function loadScores(week = 'current') {
-    const weekParam = week === 'next' && currentWeekData ? `?week=${currentWeekData.current_week + 1}` : '';
+    // If we don't have current week number yet, load it first
+    if (!currentWeekNumber && week === 'next') {
+        // Load current week first to get the week number
+        fetch('/api/scores')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentWeekNumber = data.current_week;
+                    // Now load next week
+                    loadScores('next');
+                }
+            });
+        return;
+    }
+    
+    let weekParam = '';
+    if (week === 'next' && currentWeekNumber) {
+        weekParam = `?week=${currentWeekNumber + 1}`;
+    }
     
     fetch(`/api/scores${weekParam}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                currentWeekData = data;
+                // Store current week number if we don't have it
+                if (!currentWeekNumber) {
+                    currentWeekNumber = data.current_week;
+                }
                 
                 if (data.games && data.games.length > 0) {
                     renderScores(data.games);
