@@ -144,6 +144,18 @@ function addMessage(text, type) {
 }
 
 function formatMessage(text) {
+    // Extract iframe embeds before escaping HTML
+    const iframePattern = /<iframe[^>]*>.*?<\/iframe>/gi;
+    const iframes = [];
+    let iframeIndex = 0;
+    
+    text = text.replace(iframePattern, (match) => {
+        const placeholder = `__IFRAME_PLACEHOLDER_${iframeIndex}__`;
+        iframes.push({ html: match, placeholder });
+        iframeIndex++;
+        return placeholder;
+    });
+    
     // Extract markdown images before escaping HTML
     const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
     const images = [];
@@ -159,6 +171,11 @@ function formatMessage(text) {
     });
     
     text = escapeHtml(text);
+    
+    // Replace iframe placeholders with actual iframes
+    iframes.forEach(({ html, placeholder }) => {
+        text = text.replace(placeholder, html);
+    });
     
     // Replace image placeholders with actual img tags (clickable thumbnails)
     images.forEach(({ alt, src, placeholder }) => {

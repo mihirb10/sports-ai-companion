@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import hashlib
 from espn_api.football import League
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 
 from models import db, User, Conversation
 from replit_auth import login_manager, make_replit_blueprint, require_login
@@ -155,6 +157,14 @@ Just paste your filled table or provide the values in your next message!"
 • Present headlines in bullet point format with brief summaries
 • Focus on recent breaking news and significant moves
 • Include player stats or team impact where relevant
+
+**Video Highlights:**
+• When users ask about specific plays, touchdowns, or want to watch highlights, use search_play_highlights
+• Build a descriptive search query (e.g., "Josh Allen touchdown pass week 8", "Chiefs vs Bills highlights")
+• ALWAYS embed the first video directly in your response using this exact format:
+  <iframe width="100%" height="400" src="VIDEO_EMBED_URL" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+• For additional videos, provide them as clickable links
+• The tool returns embed_url (use this for iframe) and watch_url (use for links)
 
 **Route & Play Analysis:**
 • When users ask about a player's "favorite routes" (WR/TE) or "best plays" (QB), use analyze_player_routes_plays
@@ -743,6 +753,114 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 'success': False,
                 'error': str(e),
                 'message': f'Could not fetch play-by-play data for game {game_id}'
+            }
+
+    def search_play_highlights(self, query: str, max_results: int = 5) -> dict:
+        """Search for NFL play highlights on YouTube using the YouTube Data API.
+        
+        Args:
+            query: Search query (e.g., "Josh Allen touchdown pass week 8", "Chiefs game highlights")
+            max_results: Maximum number of videos to return (default 5, max 10)
+            
+        Returns:
+            dict with video results including titles, video_ids, thumbnails, and embed codes
+        """
+        try:
+            # Get YouTube access token from Replit integration
+            hostname = os.getenv('REPLIT_CONNECTORS_HOSTNAME')
+            x_replit_token = (
+                'repl ' + os.getenv('REPL_IDENTITY') if os.getenv('REPL_IDENTITY')
+                else 'depl ' + os.getenv('WEB_REPL_RENEWAL') if os.getenv('WEB_REPL_RENEWAL')
+                else None
+            )
+            
+            if not x_replit_token:
+                return {
+                    'success': False,
+                    'message': 'YouTube integration not configured',
+                    'videos': []
+                }
+            
+            # Fetch connection settings
+            conn_response = requests.get(
+                f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=youtube',
+                headers={
+                    'Accept': 'application/json',
+                    'X_REPLIT_TOKEN': x_replit_token
+                }
+            )
+            
+            if conn_response.status_code != 200:
+                return {
+                    'success': False,
+                    'message': 'Could not access YouTube connection',
+                    'videos': []
+                }
+            
+            connection_data = conn_response.json()
+            connection_settings = connection_data.get('items', [])[0] if connection_data.get('items') else None
+            
+            if not connection_settings:
+                return {
+                    'success': False,
+                    'message': 'YouTube not connected',
+                    'videos': []
+                }
+            
+            access_token = connection_settings.get('settings', {}).get('access_token')
+            
+            if not access_token:
+                return {
+                    'success': False,
+                    'message': 'YouTube access token not available',
+                    'videos': []
+                }
+            
+            # Build YouTube client with access token
+            youtube = build('youtube', 'v3', credentials=Credentials(token=access_token))
+            
+            # Search for videos with NFL-focused query
+            search_query = f"NFL {query} highlights"
+            
+            search_response = youtube.search().list(
+                q=search_query,
+                part='snippet',
+                maxResults=min(max_results, 10),
+                type='video',
+                order='relevance',
+                videoDuration='medium'  # Filter for highlight-length videos (4-20 min)
+            ).execute()
+            
+            videos = []
+            for item in search_response.get('items', []):
+                video_id = item['id']['videoId']
+                snippet = item['snippet']
+                
+                videos.append({
+                    'video_id': video_id,
+                    'title': snippet['title'],
+                    'channel': snippet['channelTitle'],
+                    'description': snippet['description'][:200] + '...' if len(snippet['description']) > 200 else snippet['description'],
+                    'thumbnail': snippet['thumbnails']['high']['url'] if 'high' in snippet['thumbnails'] else snippet['thumbnails']['default']['url'],
+                    'published_at': snippet['publishedAt'],
+                    'embed_url': f'https://www.youtube.com/embed/{video_id}',
+                    'watch_url': f'https://www.youtube.com/watch?v={video_id}'
+                })
+            
+            return {
+                'success': True,
+                'query': search_query,
+                'videos': videos,
+                'count': len(videos)
+            }
+            
+        except Exception as e:
+            logging.error(f"Error searching play highlights: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Could not search for play highlights',
+                'videos': []
             }
 
     def analyze_player_routes_plays(self, player_name: str, position: str, num_results: int = 3) -> dict:
@@ -1434,6 +1552,25 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 }
             },
             {
+                "name": "search_play_highlights",
+                "description": "Search for NFL play highlights on YouTube. Use this when users ask about specific plays, touchdowns, game highlights, or player performances and want to watch video highlights. Returns YouTube video results with embed codes that can be displayed in the chat.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for the highlight (e.g., 'Josh Allen touchdown pass week 8', 'Chiefs vs Bills highlights', 'Patrick Mahomes incredible throw')"
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Maximum number of videos to return (default 5, max 10)",
+                            "default": 5
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
                 "name": "get_fantasy_team",
                 "description": "Fetches the user's ESPN Fantasy Football team roster, current matchup, and league standings. Use this when users ask about their fantasy team, roster, who to start/sit, or want personalized fantasy advice. Requires the user's ESPN credentials (league_id, and optionally espn_s2/swid for private leagues) - check FANTASY FOOTBALL CONTEXT for saved credentials. If team_name is not provided and user hasn't selected their team yet, this will return a list of all teams in the league for the user to choose from.",
                 "input_schema": {
@@ -1507,6 +1644,10 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
                 route_or_play_names = tool_input["route_or_play_names"]
                 diagram_type = tool_input["diagram_type"]
                 tool_result = self.generate_route_play_diagrams(route_or_play_names, diagram_type)
+            elif tool_name == "search_play_highlights":
+                query = tool_input["query"]
+                max_results = tool_input.get("max_results", 5)
+                tool_result = self.search_play_highlights(query, max_results)
             elif tool_name == "get_fantasy_team":
                 year = tool_input.get("year", 2025)
                 team_name = tool_input.get("team_name", None)
