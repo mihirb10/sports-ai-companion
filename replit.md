@@ -91,14 +91,16 @@ Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, sec
 
 ### YouTube Video Integration
 
-**YouTube Data API v3**: Integrated via Replit's YouTube connector for searching and embedding NFL highlights, touchdowns, and specific plays. The connector manages OAuth2 credentials automatically, providing secure API access through environment variables. The `search_play_highlights` tool constructs smart search queries combining player names, teams, play types, and dates to find relevant videos. Videos are embedded directly in chat responses as responsive iframe players with dark-themed styling matching the app's design.
+**YouTube Data API v3**: Integrated using a direct API key (`YOUTUBE_API_KEY` stored in Replit Secrets) for searching and embedding NFL highlights, touchdowns, and specific plays. The `search_play_highlights` tool constructs smart search queries combining player names, teams, play types, and dates to find relevant videos. Videos are embedded directly in chat responses as responsive iframe players with dark-themed styling matching the app's design.
 
 Key features:
+- **Direct API Access**: Uses `googleapiclient.discovery.build()` with `developerKey` parameter for simple, reliable authentication
 - **Smart Query Building**: Combines player, team, play type, and date to find accurate highlights
 - **Automatic Embedding**: First video is embedded inline; additional videos are provided as clickable links
 - **Responsive Design**: Videos scale appropriately on mobile/desktop with 16:9 aspect ratio
 - **Dark Theme Integration**: iframe styling matches the app's dark color scheme with rounded corners and shadows
 - **Graceful Quota Handling**: When YouTube API daily quota is exceeded, the system automatically provides direct YouTube search links as fallback (quota resets at midnight Pacific Time)
+- **User-Owned Quota**: Uses the user's own Google Cloud project quota (10,000 units/day = ~100 searches)
 
 ### ESPN Fantasy Football Integration
 
