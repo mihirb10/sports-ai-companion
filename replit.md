@@ -21,7 +21,7 @@ Videos are fetched via YouTube Data API (using direct API key stored in YOUTUBE_
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language. Keep responses concise - just key stats and salient points, avoid lengthy explanations.
 
 ## System Architecture
 
