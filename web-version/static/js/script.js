@@ -5,6 +5,18 @@ const typingIndicator = document.getElementById('typingIndicator');
 
 let conversationStarted = false;
 
+// Football player avatars (5 variations)
+const userAvatars = [
+    '/static/avatars/Football_player_red_jersey_bb2ddfcf.png',
+    '/static/avatars/Football_player_blue_jersey_2dc695ec.png',
+    '/static/avatars/Football_player_green_jersey_d8b5d345.png',
+    '/static/avatars/Football_player_black_jersey_d05e4675.png',
+    '/static/avatars/Football_player_white_jersey_77a7368f.png'
+];
+
+// Get user's assigned avatar (set in HTML template)
+const userAvatarPath = userAvatars[window.userAvatarId || 0];
+
 async function sendMessage() {
     const message = userInput.value.trim();
     
@@ -118,7 +130,14 @@ function addMessage(text, type) {
         
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'message-avatar';
-        avatarDiv.textContent = '👤';
+        const avatarImg = document.createElement('img');
+        avatarImg.src = userAvatarPath;
+        avatarImg.alt = 'User';
+        avatarImg.style.width = '100%';
+        avatarImg.style.height = '100%';
+        avatarImg.style.objectFit = 'cover';
+        avatarImg.style.borderRadius = '50%';
+        avatarDiv.appendChild(avatarImg);
         messageDiv.appendChild(avatarDiv);
     } else if (type === 'assistant') {
         const avatarDiv = document.createElement('div');

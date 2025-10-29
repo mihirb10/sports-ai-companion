@@ -1557,7 +1557,10 @@ def create_app():
         """Landing/Chat page."""
         if not current_user.is_authenticated:
             return render_template('login.html')
-        return render_template('index.html')
+        
+        # Pass user ID hash for avatar selection
+        user_id_hash = hash(current_user.id) % 5
+        return render_template('index.html', user_avatar_id=user_id_hash)
     
     @app.route('/chat', methods=['POST'])
     @require_login
