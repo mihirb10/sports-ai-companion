@@ -31,11 +31,20 @@ SportsAI integrates Replit Auth for OAuth2-based authentication, supporting Goog
 
 ### Database Architecture
 
-The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy ORM. The schema includes tables for `Users` (storing Replit Auth IDs and profile info), `OAuth` (for tokens and browser session keys), and `Conversations` (storing serialized JSON conversation history, fantasy context, and recent analysis context per user). The `recent_analysis_context` field enables the AI to remember route/play analysis when users respond affirmatively to follow-up questions. Conversation records are lazily created and linked to `user_id` for persistence.
+The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy ORM. The schema includes tables for `Users` (storing Replit Auth IDs, profile info, `display_name`, and `custom_avatar_path`), `OAuth` (for tokens and browser session keys), and `Conversations` (storing serialized JSON conversation history, fantasy context, and recent analysis context per user). The `recent_analysis_context` field enables the AI to remember route/play analysis when users respond affirmatively to follow-up questions. Conversation records are lazily created and linked to `user_id` for persistence.
+
+**Schema Note**: The `display_name` and `custom_avatar_path` columns were added manually via SQL ALTER statements. For new deployments, these columns must be created before the application starts.
 
 ### Frontend Architecture
 
-Built with Vanilla JavaScript, HTML5, and CSS3, the frontend follows a single-page application pattern. It features a `login.html` for unauthenticated access and an `index.html` for the chat interface. The UI boasts a modern dark theme (`#1a1a1a` primary background) inspired by Claude/Gemini, with a full-height chat container, message bubbles (user 👤, assistant 🏈), an auto-expanding input box, and smooth animations.
+Built with Vanilla JavaScript, HTML5, and CSS3, the frontend follows a single-page application pattern. It features a `login.html` for unauthenticated access and an `index.html` for the chat interface. The UI boasts a modern dark theme (`#1a1a1a` primary background) inspired by Claude/Gemini.
+
+**Bottom Navigation Design** (October 2025): The UI uses a mobile-friendly bottom navigation bar with three tabs:
+- **Chat Tab**: Full-height chat container with message bubbles (user 👤 with custom avatar, assistant 🏈), auto-expanding input box, and smooth animations
+- **Scores Tab**: Displays live NFL scores for the current gameweek (switches every Wednesday at noon), with automatic refresh and caching
+- **Profile Tab**: User profile management with custom display name input, avatar upload (supports PNG, JPEG, WebP up to 5MB), and 5 preset football player avatars
+
+Tab state persists in localStorage, and all views use CSS-based show/hide toggling. Custom user avatars from the profile replace the previous generated player images in chat messages.
 
 ### Progressive Web App (PWA) Features
 
@@ -65,7 +74,11 @@ Key design decisions include database-backed persistence for conversations, the 
 
 ### API Integration Pattern
 
-The application exposes a RESTful JSON API with endpoints like `/chat` (for AI interaction), `/auth/login`, and `/auth/logout`. Authentication is handled via Replit Auth, redirecting users through the OAuth flow. Error handling involves try-catch blocks for external API calls, graceful degradation, and redirects for authentication failures.
+The application exposes a RESTful JSON API with endpoints like `/chat` (for AI interaction), `/auth/login`, `/auth/logout`, `/api/profile` (GET/POST for profile management with secure file uploads), and `/api/scores` (for fetching current gameweek NFL scores). Authentication is handled via Replit Auth, redirecting users through the OAuth flow. Error handling involves try-catch blocks for external API calls, graceful degradation, and redirects for authentication failures.
+
+**Profile Management**: The `/api/profile` endpoint supports both custom avatar uploads (stored in `/static/uploads/avatars/` with secure filename handling) and preset avatar selection (5 generated football player images). File uploads are validated for type (image/png, image/jpeg, image/webp) and size (max 5MB).
+
+**Scores API**: The `/api/scores` endpoint calculates the current NFL gameweek based on Wednesday transitions (season starts Sep 4, 2025) and fetches live scores from ESPN's public API. Results are cached hourly to reduce external API calls.
 
 ### Security Considerations
 
