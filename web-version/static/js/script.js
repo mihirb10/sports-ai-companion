@@ -355,3 +355,67 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+// Add fallback "Watch on YouTube" cards for all video embeds
+function setupVideoFallbacks() {
+    const iframes = document.querySelectorAll('iframe[src*="youtube.com/embed"]');
+    
+    iframes.forEach(iframe => {
+        // Skip if already processed
+        if (iframe.dataset.fallbackProcessed) return;
+        iframe.dataset.fallbackProcessed = 'true';
+        
+        // Extract video ID from embed URL
+        const videoIdMatch = iframe.src.match(/\/embed\/([^?&]+)/);
+        if (!videoIdMatch) return;
+        
+        const videoId = videoIdMatch[1];
+        const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        
+        // Try to get title from data attribute or use default
+        const title = iframe.dataset.title || 'NFL Highlight';
+        
+        // Create a wrapper to hold iframe + fallback link
+        const wrapper = document.createElement('div');
+        wrapper.className = 'youtube-embed-wrapper';
+        iframe.parentNode.insertBefore(wrapper, iframe);
+        wrapper.appendChild(iframe);
+        
+        // Always show a compact fallback link below the video
+        // This is useful if the embed is blocked by NFL restrictions
+        const fallbackLink = createVideoFallbackLink(watchUrl, title);
+        wrapper.appendChild(fallbackLink);
+    });
+}
+
+// Create a compact fallback link for videos (always shown as backup)
+function createVideoFallbackLink(watchUrl, title) {
+    const link = document.createElement('div');
+    link.className = 'youtube-fallback-link';
+    link.innerHTML = `
+        <div class="fallback-info-text">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            If video doesn't play (NFL restrictions):
+        </div>
+        <a href="${watchUrl}" target="_blank" rel="noopener noreferrer" class="fallback-watch-btn-compact">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+            </svg>
+            Watch on YouTube
+        </a>
+    `;
+    return link;
+}
+
+// Run fallback setup when DOM changes (new messages added)
+const observer = new MutationObserver(() => {
+    setupVideoFallbacks();
+});
+
+observer.observe(chatContainer, {
+    childList: true,
+    subtree: true
+});
