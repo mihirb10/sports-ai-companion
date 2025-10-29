@@ -17,7 +17,7 @@ Diagrams appear inline with each description (not grouped at the bottom). Three 
 - Request game highlights (e.g., "Chiefs vs Bills highlights")
 - Want to see player-specific plays (e.g., "Mahomes best throws this season")
 
-Videos are fetched via YouTube Data API through Replit's YouTube connector and displayed as responsive embedded players matching the dark theme.
+Videos are fetched via YouTube Data API (using direct API key stored in YOUTUBE_API_KEY secret) and displayed as responsive embedded players matching the dark theme. **Only ONE video is shown per request** - no additional videos are suggested. A compact "Watch on YouTube" fallback link appears below each video for cases where NFL restrictions prevent embedding. **No URLs are ever exposed** in the chat interface - all links are hidden within buttons/embeds.
 
 ## User Preferences
 
@@ -96,10 +96,12 @@ Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, sec
 Key features:
 - **Direct API Access**: Uses `googleapiclient.discovery.build()` with `developerKey` parameter for simple, reliable authentication
 - **Smart Query Building**: Combines player, team, play type, and date to find accurate highlights
-- **Automatic Embedding**: First video is embedded inline; additional videos are provided as clickable links
+- **Single Video per Request**: Only ONE video is embedded per user request - no additional videos suggested
+- **NFL Embedding Fallback**: Compact "Watch on YouTube" button shown below each video for NFL restriction workarounds
+- **No Exposed URLs**: All links are hidden within buttons/embeds - clean, URL-free chat interface
 - **Responsive Design**: Videos scale appropriately on mobile/desktop with 16:9 aspect ratio
 - **Dark Theme Integration**: iframe styling matches the app's dark color scheme with rounded corners and shadows
-- **Graceful Quota Handling**: When YouTube API daily quota is exceeded, the system automatically provides direct YouTube search links as fallback (quota resets at midnight Pacific Time)
+- **Graceful Quota Handling**: When YouTube API daily quota is exceeded, the system silently skips videos and provides text responses only (quota resets at midnight Pacific Time)
 - **User-Owned Quota**: Uses the user's own Google Cloud project quota (10,000 units/day = ~100 searches)
 
 ### ESPN Fantasy Football Integration

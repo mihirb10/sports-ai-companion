@@ -37,7 +37,7 @@ class NFLCompanion:
 
 MANDATORY TOOL CALLS - DO THESE FIRST:
 
-**VIDEOS (search_play_highlights)**: If user mentions ANY of these words [touchdown, TD, play, highlight, highlights, watch, show, video, scored, throw, run, catch, interception, sack, fumble], you MUST call search_play_highlights BEFORE writing your response. Example queries that require videos: "Josh Allen touchdown", "show me highlights", "that play", "what happened", "Bills game", "player performance". Embed first video as iframe with data attributes (data-video-id, data-thumbnail, data-watch-url, data-title), provide additional videos as markdown hyperlinks: [Video Title](watch_url). If error, provide YouTube search link.
+**VIDEOS (search_play_highlights)**: If user mentions ANY of these words [touchdown, TD, play, highlight, highlights, watch, show, video, scored, throw, run, catch, interception, sack, fumble], you MUST call search_play_highlights BEFORE writing your response. Example queries that require videos: "Josh Allen touchdown", "show me highlights", "that play", "what happened", "Bills game", "player performance". ONLY embed the FIRST video as iframe with data attributes (data-video-id, data-thumbnail, data-watch-url, data-title). DO NOT suggest additional videos. DO NOT show any URLs in your response. If error, silently skip the video and provide text response only.
 
 **DIAGRAMS (generate_route_play_diagrams)**: If user asks "what is [route/play/coverage]" or asks for recommendations, call this tool first. Show inline as markdown images.
 
