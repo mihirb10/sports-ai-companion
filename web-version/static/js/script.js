@@ -639,6 +639,7 @@ function updateChatAvatars() {
 
 const scoresContent = document.getElementById('scoresContent');
 const weekSelector = document.getElementById('weekSelector');
+const weekDisplay = document.getElementById('weekDisplay');
 let currentWeekNumber = null;
 
 // Load scores data
@@ -663,13 +664,22 @@ function loadScores(week = 'current') {
         weekParam = `?week=${currentWeekNumber + 1}`;
     }
     
+    console.log('Loading scores with params:', weekParam);
+    
     fetch(`/api/scores${weekParam}`)
         .then(response => response.json())
         .then(data => {
+            console.log('Scores data received:', data);
+            
             if (data.success) {
                 // Store current week number if we don't have it
                 if (!currentWeekNumber) {
                     currentWeekNumber = data.current_week;
+                }
+                
+                // Update week display
+                if (weekDisplay) {
+                    weekDisplay.textContent = `Week ${data.week}`;
                 }
                 
                 if (data.games && data.games.length > 0) {
