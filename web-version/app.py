@@ -1942,11 +1942,26 @@ Return ONLY the JSON, nothing else."""
         if request.method == 'GET':
             # Return current profile data
             user_avatar_id = hash(current_user.id) % 5
+            
+            # Map avatar IDs to actual generated avatar filenames
+            avatar_files = [
+                '/static/avatars/Football_player_red_jersey_bb2ddfcf.png',
+                '/static/avatars/Football_player_blue_jersey_2dc695ec.png',
+                '/static/avatars/Football_player_green_jersey_d8b5d345.png',
+                '/static/avatars/Football_player_black_jersey_d05e4675.png',
+                '/static/avatars/Football_player_white_jersey_77a7368f.png'
+            ]
+            
+            # Use custom avatar if set, otherwise use default based on user ID
+            avatar_path = current_user.custom_avatar_path
+            if not avatar_path or not avatar_path.startswith('/static/avatars/Football_player'):
+                avatar_path = avatar_files[user_avatar_id]
+            
             return jsonify({
                 'success': True,
                 'profile': {
                     'display_name': current_user.display_name or '',
-                    'custom_avatar_path': current_user.custom_avatar_path,
+                    'custom_avatar_path': avatar_path,
                     'fallback_avatar_id': user_avatar_id,
                     'email': current_user.email,
                     'first_name': current_user.first_name,
