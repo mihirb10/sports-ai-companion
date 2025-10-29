@@ -323,6 +323,7 @@ body {
 
 #userInput::placeholder {
     color: var(--text-secondary);
+    text-align: center;
 }
 
 .send-btn {
