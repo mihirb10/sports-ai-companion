@@ -17,7 +17,7 @@ Diagrams appear inline with each description (not grouped at the bottom). Three 
 - Request game highlights (e.g., "Chiefs vs Bills highlights")
 - Want to see player-specific plays (e.g., "Mahomes best throws this season")
 
-Videos are fetched via YouTube Data API (using direct API key stored in YOUTUBE_API_KEY secret) and displayed as responsive embedded players matching the dark theme. **Only ONE video is shown per request** - no additional videos are suggested. A compact "Watch on YouTube" fallback link appears below each video for cases where NFL restrictions prevent embedding. **No URLs are ever exposed** in the chat interface - all links are hidden within buttons/embeds.
+Videos are fetched via YouTube Data API (using direct API key stored in YOUTUBE_API_KEY secret) and displayed as responsive embedded players matching the dark theme. **Only ONE video is shown per request** - no additional videos are suggested. A compact "Watch on YouTube" fallback link appears below each video for cases where NFL restrictions prevent embedding. **No URLs are ever exposed** in the chat interface - all links are hidden within buttons/embeds. **Minimal text with videos** - when a video is shown, only one or two sentences of observation are included; the video speaks for itself.
 
 ## User Preferences
 
