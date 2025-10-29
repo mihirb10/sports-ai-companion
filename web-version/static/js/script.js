@@ -343,3 +343,15 @@ window.addEventListener('appinstalled', () => {
     }
     deferredPrompt = null;
 });
+
+// Handle example prompt clicks
+document.addEventListener('click', (e) => {
+    const promptButton = e.target.closest('.example-prompt');
+    if (promptButton) {
+        const promptText = promptButton.getAttribute('data-prompt');
+        if (promptText) {
+            userInput.value = promptText;
+            sendMessage();
+        }
+    }
+});
