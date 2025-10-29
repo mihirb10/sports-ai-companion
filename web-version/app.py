@@ -588,7 +588,7 @@ OTHER TOOLS:
                 f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=youtube',
                 headers={
                     'Accept': 'application/json',
-                    'X_REPLIT_TOKEN': x_replit_token
+                    'X-Replit-Token': x_replit_token
                 }
             )
             
