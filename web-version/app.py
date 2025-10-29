@@ -37,7 +37,7 @@ class NFLCompanion:
 
 MANDATORY TOOL CALLS - DO THESE FIRST:
 
-**VIDEOS (search_play_highlights)**: If user mentions ANY of these words [touchdown, TD, play, highlight, highlights, watch, show, video, scored, throw, run, catch, interception, sack, fumble], you MUST call search_play_highlights BEFORE writing your response. Example queries that require videos: "Josh Allen touchdown", "show me highlights", "that play", "what happened", "Bills game", "player performance". ONLY embed the FIRST video as iframe with data attributes (data-video-id, data-thumbnail, data-watch-url, data-title). DO NOT suggest additional videos. DO NOT show any URLs in your response. When showing a video, keep text MINIMAL - just one or two sentences making a brief observation about the highlight. The video speaks for itself. If error, silently skip the video and provide text response only.
+**VIDEOS (search_play_highlights)**: If user mentions ANY of these words [touchdown, TD, play, highlight, highlights, watch, show, video, scored, throw, run, catch, interception, sack, fumble], you MUST call search_play_highlights BEFORE writing your response. Example queries that require videos: "Josh Allen touchdown", "show me highlights", "that play", "what happened", "Bills game", "player performance". ONLY embed the FIRST video as iframe with data attributes: data-video-id="video_id" data-thumbnail="thumbnail_url" data-watch-url="watch_url" data-official-nfl-url="official_nfl_url" data-title="title". The tool returns embeddable fan uploads/highlights for the iframe, plus official_nfl_url for the fallback button. DO NOT suggest additional videos. DO NOT show any URLs in your response. When showing a video, keep text MINIMAL - just one or two sentences making a brief observation about the highlight. The video speaks for itself. If error, silently skip the video and provide text response only.
 
 **DIAGRAMS (generate_route_play_diagrams)**: If user asks "what is [route/play/coverage]" or asks for recommendations, call this tool first. Show inline as markdown images.
 
@@ -558,13 +558,16 @@ OTHER TOOLS:
 
     def search_play_highlights(self, query: str, max_results: int = 5) -> dict:
         """Search for NFL play highlights on YouTube using the YouTube Data API.
+        Searches for fan uploads and highlight channels first (embeddable), 
+        then finds official NFL footage for the fallback link.
         
         Args:
             query: Search query (e.g., "Josh Allen touchdown pass week 8", "Chiefs game highlights")
             max_results: Maximum number of videos to return (default 5, max 10)
             
         Returns:
-            dict with video results including titles, video_ids, thumbnails, and embed codes
+            dict with video results including titles, video_ids, thumbnails, embed codes,
+            and official_nfl_url for the fallback button
         """
         try:
             # Get YouTube API key from environment
@@ -580,8 +583,9 @@ OTHER TOOLS:
             # Build YouTube client with API key
             youtube = build('youtube', 'v3', developerKey=youtube_api_key)
             
-            # Search for videos with NFL-focused query
-            search_query = f"NFL {query} highlights"
+            # Search for videos with NFL-focused query, excluding official NFL channel
+            # This helps find fan uploads and highlight channels that allow embedding
+            search_query = f"NFL {query} highlights -channel:NFL"
             
             search_response = youtube.search().list(
                 q=search_query,
@@ -589,7 +593,8 @@ OTHER TOOLS:
                 maxResults=min(max_results, 10),
                 type='video',
                 order='relevance',
-                videoDuration='medium'  # Filter for highlight-length videos (4-20 min)
+                videoDuration='medium',  # Filter for highlight-length videos (4-20 min)
+                videoEmbeddable='true'  # Only return embeddable videos
             ).execute()
             
             videos = []
@@ -608,11 +613,30 @@ OTHER TOOLS:
                     'watch_url': f'https://www.youtube.com/watch?v={video_id}'
                 })
             
+            # Search for official NFL video for the fallback link
+            official_nfl_url = None
+            try:
+                nfl_search_query = f"NFL {query} highlights channel:NFL"
+                nfl_search_response = youtube.search().list(
+                    q=nfl_search_query,
+                    part='snippet',
+                    maxResults=1,
+                    type='video',
+                    order='relevance'
+                ).execute()
+                
+                if nfl_search_response.get('items'):
+                    official_video_id = nfl_search_response['items'][0]['id']['videoId']
+                    official_nfl_url = f'https://www.youtube.com/watch?v={official_video_id}'
+            except Exception as e:
+                logging.warning(f"Could not fetch official NFL video: {e}")
+            
             return {
                 'success': True,
                 'query': search_query,
                 'videos': videos,
-                'count': len(videos)
+                'count': len(videos),
+                'official_nfl_url': official_nfl_url  # For the "Official NFL footage here" button
             }
             
         except Exception as e:

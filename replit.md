@@ -91,13 +91,14 @@ Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, sec
 
 ### YouTube Video Integration
 
-**YouTube Data API v3**: Integrated using a direct API key (`YOUTUBE_API_KEY` stored in Replit Secrets) for searching and embedding NFL highlights, touchdowns, and specific plays. The `search_play_highlights` tool constructs smart search queries combining player names, teams, play types, and dates to find relevant videos. Videos are embedded directly in chat responses as responsive iframe players with dark-themed styling matching the app's design.
+**YouTube Data API v3**: Integrated using a direct API key (`YOUTUBE_API_KEY` stored in Replit Secrets) for searching and embedding NFL highlights, touchdowns, and specific plays. The `search_play_highlights` tool uses a dual-search strategy: it searches for embeddable fan uploads and highlight channels (excluding official NFL channel) for the actual video embed, then separately finds official NFL footage for the fallback button. This ensures videos actually play while still providing access to official content.
 
 Key features:
 - **Direct API Access**: Uses `googleapiclient.discovery.build()` with `developerKey` parameter for simple, reliable authentication
-- **Smart Query Building**: Combines player, team, play type, and date to find accurate highlights
+- **Smart Dual Search**: First searches for embeddable fan uploads/highlight channels (excludes NFL channel), then finds official NFL video for fallback link
+- **Embeddable Video Priority**: Only returns videos marked as embeddable (`videoEmbeddable='true'`) to maximize playback success
 - **Single Video per Request**: Only ONE video is embedded per user request - no additional videos suggested
-- **NFL Embedding Fallback**: Compact "Watch on YouTube" button shown below each video for NFL restriction workarounds
+- **Official NFL Fallback**: "Official NFL footage here" button links to the official NFL video for users who want the source
 - **No Exposed URLs**: All links are hidden within buttons/embeds - clean, URL-free chat interface
 - **Responsive Design**: Videos scale appropriately on mobile/desktop with 16:9 aspect ratio
 - **Dark Theme Integration**: iframe styling matches the app's dark color scheme with rounded corners and shadows
