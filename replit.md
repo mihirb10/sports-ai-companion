@@ -98,6 +98,7 @@ Key features:
 - **Automatic Embedding**: First video is embedded inline; additional videos are provided as clickable links
 - **Responsive Design**: Videos scale appropriately on mobile/desktop with 16:9 aspect ratio
 - **Dark Theme Integration**: iframe styling matches the app's dark color scheme with rounded corners and shadows
+- **Graceful Quota Handling**: When YouTube API daily quota is exceeded, the system automatically provides direct YouTube search links as fallback (quota resets at midnight Pacific Time)
 
 ### ESPN Fantasy Football Integration
 

@@ -161,10 +161,13 @@ Just paste your filled table or provide the values in your next message!"
 **Video Highlights:**
 • When users ask about specific plays, touchdowns, or want to watch highlights, use search_play_highlights
 • Build a descriptive search query (e.g., "Josh Allen touchdown pass week 8", "Chiefs vs Bills highlights")
-• ALWAYS embed the first video directly in your response using this exact format:
+• If successful, ALWAYS embed the first video directly in your response using this exact format:
   <iframe width="100%" height="400" src="VIDEO_EMBED_URL" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 • For additional videos, provide them as clickable links
 • The tool returns embed_url (use this for iframe) and watch_url (use for links)
+• IF QUOTA EXCEEDED: Provide a direct YouTube search link using this format:
+  [Search YouTube for "{query}"](https://www.youtube.com/results?search_query={url_encoded_query})
+  Example: "Unfortunately, I can't access video highlights right now due to quota limits, but you can [search YouTube for "Josh Allen touchdown"](https://www.youtube.com/results?search_query=Josh+Allen+touchdown) to find the clip! 🎯"
 
 **Route & Play Analysis:**
 • When users ask about a player's "favorite routes" (WR/TE) or "best plays" (QB), use analyze_player_routes_plays
@@ -855,11 +858,29 @@ Remember: You're a stats encyclopedia, not a conversation partner. Numbers over 
             }
             
         except Exception as e:
-            logging.error(f"Error searching play highlights: {e}")
+            error_str = str(e)
+            logging.error(f"Error searching play highlights: {error_str}")
+            
+            # Build search query for fallback link
+            search_query = f"NFL {query} highlights"
+            
+            # Detect quota exceeded errors
+            if 'quota' in error_str.lower() or 'quotaExceeded' in error_str:
+                return {
+                    'success': False,
+                    'error': 'quota_exceeded',
+                    'message': 'YouTube API daily quota exceeded. Video search will be available after quota resets at midnight Pacific Time.',
+                    'search_query': search_query,
+                    'fallback_url': f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}",
+                    'videos': []
+                }
+            
             return {
                 'success': False,
-                'error': str(e),
+                'error': error_str,
                 'message': 'Could not search for play highlights',
+                'search_query': search_query,
+                'fallback_url': f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}",
                 'videos': []
             }
 
