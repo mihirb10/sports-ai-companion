@@ -4,8 +4,9 @@ SportsAI - Flask web application with user authentication
 Integrated with Replit Auth for Google and email/password login
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
 from flask_login import current_user
 import anthropic
 import requests
@@ -1582,9 +1583,17 @@ def create_app():
         if not current_user.is_authenticated:
             return render_template('login.html')
         
-        # Pass user ID hash for avatar selection
+        # Pass user ID hash for avatar selection (fallback)
         user_id_hash = hash(current_user.id) % 5
-        return render_template('index.html', user_avatar_id=user_id_hash)
+        
+        # Pass user profile data to template
+        user_display_name = current_user.display_name or f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or None
+        user_custom_avatar = current_user.custom_avatar_path or None
+        
+        return render_template('index.html', 
+                             user_avatar_id=user_id_hash,
+                             user_display_name=user_display_name,
+                             user_custom_avatar=user_custom_avatar)
     
     @app.route('/chat', methods=['POST'])
     @require_login
@@ -1907,6 +1916,148 @@ Return ONLY the JSON, nothing else."""
             return jsonify({
                 'error': str(e),
                 'success': False
+            }), 500
+    
+    @app.route('/api/profile', methods=['GET', 'POST'])
+    @require_login
+    def profile():
+        """Get or update user profile."""
+        if request.method == 'GET':
+            # Return current profile data
+            user_avatar_id = hash(current_user.id) % 5
+            return jsonify({
+                'success': True,
+                'profile': {
+                    'display_name': current_user.display_name or '',
+                    'custom_avatar_path': current_user.custom_avatar_path,
+                    'fallback_avatar_id': user_avatar_id,
+                    'email': current_user.email,
+                    'first_name': current_user.first_name,
+                    'last_name': current_user.last_name
+                }
+            })
+        
+        # POST - Update profile
+        try:
+            # Handle display name update
+            display_name = request.form.get('display_name')
+            if display_name is not None:
+                current_user.display_name = display_name.strip() if display_name.strip() else None
+            
+            # Handle avatar upload
+            if 'avatar' in request.files:
+                file = request.files['avatar']
+                if file and file.filename:
+                    # Validate file type
+                    allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
+                    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+                    
+                    if ext not in allowed_extensions:
+                        return jsonify({
+                            'success': False,
+                            'error': 'Invalid file type. Allowed: PNG, JPG, JPEG, WEBP'
+                        }), 400
+                    
+                    # Secure filename and save
+                    filename = secure_filename(file.filename)
+                    # Add user ID to prevent collisions
+                    filename = f"{current_user.id}_{filename}"
+                    filepath = os.path.join('web-version/static/uploads/avatars', filename)
+                    file.save(filepath)
+                    
+                    # Store relative path in database
+                    current_user.custom_avatar_path = f'/static/uploads/avatars/{filename}'
+            
+            # Handle preset avatar selection
+            preset_avatar = request.form.get('preset_avatar')
+            if preset_avatar is not None:
+                # User selected a preset avatar (0-4)
+                try:
+                    avatar_id = int(preset_avatar)
+                    if 0 <= avatar_id <= 4:
+                        # Map avatar IDs to actual generated avatar filenames
+                        avatar_files = [
+                            '/static/avatars/Football_player_red_jersey_bb2ddfcf.png',
+                            '/static/avatars/Football_player_blue_jersey_2dc695ec.png',
+                            '/static/avatars/Football_player_green_jersey_d8b5d345.png',
+                            '/static/avatars/Football_player_black_jersey_d05e4675.png',
+                            '/static/avatars/Football_player_white_jersey_77a7368f.png'
+                        ]
+                        current_user.custom_avatar_path = avatar_files[avatar_id]
+                except ValueError:
+                    pass
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Profile updated successfully',
+                'profile': {
+                    'display_name': current_user.display_name,
+                    'custom_avatar_path': current_user.custom_avatar_path
+                }
+            })
+            
+        except Exception as e:
+            logging.error(f"Profile update error: {e}")
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/scores')
+    @require_login
+    def get_scores():
+        """Get latest NFL scores for the current gameweek."""
+        try:
+            from datetime import timedelta
+            
+            # Determine current NFL week
+            # NFL season starts first Thursday of September
+            # Week switches every Wednesday morning (use noon to be safe)
+            now = datetime.now()
+            
+            # Simple logic: week changes on Wednesday
+            # For actual implementation, you'd want to use an NFL schedule API
+            # For now, we'll use a simplified version based on date
+            
+            # Get current week number (simplified - you may want to use actual NFL schedule)
+            # NFL 2025 season started around Sep 4, 2025
+            season_start = datetime(2025, 9, 4)  # Approximate first game
+            days_since_start = (now - season_start).days
+            
+            # Each week is 7 days, but advance week on Wednesday
+            # If today is Wed (2) or later in the week, use current week
+            # Otherwise, use previous week
+            current_weekday = now.weekday()  # 0=Mon, 2=Wed
+            if current_weekday < 2:  # Mon or Tue
+                # Still in previous week
+                days_since_start -= (7 - current_weekday)
+            
+            current_week = max(1, min(18, (days_since_start // 7) + 1))
+            
+            # Use the existing get_live_scores method
+            if companion:
+                result = companion.get_live_scores()
+                
+                return jsonify({
+                    'success': True,
+                    'week': current_week,
+                    'games': result.get('games', []),
+                    'status': result.get('status', 'No games available')
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'NFL companion not initialized'
+                }), 500
+                
+        except Exception as e:
+            logging.error(f"Scores API error: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
             }), 500
     
     @app.route('/reset', methods=['POST'])

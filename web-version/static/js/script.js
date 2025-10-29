@@ -5,7 +5,7 @@ const typingIndicator = document.getElementById('typingIndicator');
 
 let conversationStarted = false;
 
-// Football player avatars (5 variations)
+// Football player avatars (5 variations) - used as fallback
 const userAvatars = [
     '/static/avatars/Football_player_red_jersey_bb2ddfcf.png',
     '/static/avatars/Football_player_blue_jersey_2dc695ec.png',
@@ -14,8 +14,16 @@ const userAvatars = [
     '/static/avatars/Football_player_white_jersey_77a7368f.png'
 ];
 
-// Get user's assigned avatar (set in HTML template)
-const userAvatarPath = userAvatars[window.userAvatarId || 0];
+// Get user's avatar - use custom if available, otherwise use assigned fallback
+function getUserAvatarPath() {
+    if (window.userCustomAvatar) {
+        return window.userCustomAvatar;
+    }
+    return userAvatars[window.userAvatarId || 0];
+}
+
+// Get initial avatar path
+let userAvatarPath = getUserAvatarPath();
 
 async function sendMessage() {
     const message = userInput.value.trim();
@@ -425,3 +433,282 @@ observer.observe(chatContainer, {
     childList: true,
     subtree: true
 });
+
+// ============================
+// Bottom Navigation & Tab Management
+// ============================
+
+// Get all navigation items
+const navItems = document.querySelectorAll('.nav-item');
+const viewSections = document.querySelectorAll('.view-section');
+
+// Function to switch views
+function switchView(viewId) {
+    // Hide all views
+    viewSections.forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active from all nav items
+    navItems.forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Show selected view
+    const selectedView = document.getElementById(viewId);
+    if (selectedView) {
+        selectedView.classList.add('active');
+    }
+    
+    // Add active to clicked nav item
+    const activeNavItem = document.querySelector(`[data-view="${viewId}"]`);
+    if (activeNavItem) {
+        activeNavItem.classList.add('active');
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('activeView', viewId);
+    
+    // Trigger specific view logic
+    if (viewId === 'scoresView') {
+        loadScores();
+    } else if (viewId === 'profileView') {
+        loadProfile();
+    }
+}
+
+// Add click listeners to navigation items
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        const viewId = item.getAttribute('data-view');
+        switchView(viewId);
+    });
+});
+
+// Restore last active view on load
+document.addEventListener('DOMContentLoaded', () => {
+    const lastView = localStorage.getItem('activeView') || 'chatView';
+    switchView(lastView);
+});
+
+// ============================
+// Profile Management
+// ============================
+
+const profileForm = document.getElementById('profileForm');
+const displayNameInput = document.getElementById('displayName');
+const avatarUploadInput = document.getElementById('avatarUpload');
+const avatarPreview = document.getElementById('avatarPreview');
+const presetAvatars = document.querySelectorAll('.preset-avatar');
+const profileMessage = document.getElementById('profileMessage');
+
+let selectedPresetAvatar = null;
+
+// Load profile data
+function loadProfile() {
+    fetch('/api/profile')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const profile = data.profile;
+                displayNameInput.value = profile.display_name || '';
+                
+                // Set avatar preview
+                if (profile.custom_avatar_path) {
+                    avatarPreview.src = profile.custom_avatar_path;
+                } else {
+                    avatarPreview.src = `/static/avatars/player${profile.fallback_avatar_id}.png`;
+                }
+                
+                // Highlight selected preset if applicable
+                if (profile.custom_avatar_path && profile.custom_avatar_path.includes('/static/avatars/player')) {
+                    const avatarId = profile.custom_avatar_path.match(/player(\d)\.png/);
+                    if (avatarId) {
+                        const presetBtn = document.querySelector(`[data-avatar="${avatarId[1]}"]`);
+                        if (presetBtn) {
+                            presetBtn.classList.add('selected');
+                        }
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading profile:', error);
+        });
+}
+
+// Handle preset avatar selection
+presetAvatars.forEach(button => {
+    button.addEventListener('click', () => {
+        // Remove selected class from all
+        presetAvatars.forEach(btn => btn.classList.remove('selected'));
+        
+        // Add selected class to clicked
+        button.classList.add('selected');
+        
+        // Update preview
+        const avatarId = button.getAttribute('data-avatar');
+        selectedPresetAvatar = avatarId;
+        avatarPreview.src = `/static/avatars/player${avatarId}.png`;
+        
+        // Clear file input
+        avatarUploadInput.value = '';
+    });
+});
+
+// Handle file upload preview
+avatarUploadInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        // Clear preset selection
+        presetAvatars.forEach(btn => btn.classList.remove('selected'));
+        selectedPresetAvatar = null;
+        
+        // Preview uploaded image
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            avatarPreview.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Handle profile form submission
+profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    formData.append('display_name', displayNameInput.value);
+    
+    // Add file if uploaded
+    if (avatarUploadInput.files[0]) {
+        formData.append('avatar', avatarUploadInput.files[0]);
+    }
+    
+    // Add preset avatar selection if selected
+    if (selectedPresetAvatar !== null) {
+        formData.append('preset_avatar', selectedPresetAvatar);
+    }
+    
+    try {
+        const response = await fetch('/api/profile', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showProfileMessage('Profile updated successfully!', 'success');
+            
+            // Update global user data
+            window.userDisplayName = data.profile.display_name;
+            window.userCustomAvatar = data.profile.custom_avatar_path;
+            
+            // Reload chat avatars
+            updateChatAvatars();
+        } else {
+            showProfileMessage(data.error || 'Failed to update profile', 'error');
+        }
+    } catch (error) {
+        console.error('Profile update error:', error);
+        showProfileMessage('An error occurred. Please try again.', 'error');
+    }
+});
+
+// Show profile message
+function showProfileMessage(message, type) {
+    profileMessage.textContent = message;
+    profileMessage.className = `profile-message ${type}`;
+    profileMessage.style.display = 'block';
+    
+    setTimeout(() => {
+        profileMessage.style.display = 'none';
+    }, 5000);
+}
+
+// Update chat avatars after profile change
+function updateChatAvatars() {
+    // Reload the user avatar path to use the new custom avatar in future messages
+    userAvatarPath = getUserAvatarPath();
+}
+
+// ============================
+// Scores Management
+// ============================
+
+const scoresContent = document.getElementById('scoresContent');
+const weekIndicator = document.getElementById('weekIndicator');
+let scoresLoaded = false;
+
+// Load scores data
+function loadScores() {
+    if (scoresLoaded) return; // Only load once
+    
+    fetch('/api/scores')
+        .then(response => response.json())
+        .then(data => {
+            scoresLoaded = true;
+            
+            if (data.success) {
+                weekIndicator.textContent = `Week ${data.week}`;
+                
+                if (data.games && data.games.length > 0) {
+                    renderScores(data.games);
+                } else {
+                    scoresContent.innerHTML = `
+                        <div class="scores-loading">
+                            <p style="color: var(--text-secondary);">${data.status || 'No games available'}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                scoresContent.innerHTML = `
+                    <div class="scores-loading">
+                        <p style="color: var(--text-secondary);">Failed to load scores</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading scores:', error);
+            scoresContent.innerHTML = `
+                <div class="scores-loading">
+                    <p style="color: var(--text-secondary);">Failed to load scores</p>
+                </div>
+            `;
+        });
+}
+
+// Render scores
+function renderScores(games) {
+    scoresContent.innerHTML = '';
+    
+    games.forEach(game => {
+        const gameCard = document.createElement('div');
+        gameCard.className = 'game-card';
+        
+        const homeTeam = game.home_team || game.teams?.home || 'TBD';
+        const awayTeam = game.away_team || game.teams?.away || 'TBD';
+        const homeScore = game.home_score !== undefined ? game.home_score : '-';
+        const awayScore = game.away_score !== undefined ? game.away_score : '-';
+        const status = game.status || game.state || 'Scheduled';
+        
+        gameCard.innerHTML = `
+            <div class="game-status">${escapeHtml(status)}</div>
+            <div class="game-teams">
+                <div class="team-info">
+                    <div class="team-name">${escapeHtml(awayTeam)}</div>
+                    <div class="team-score">${homeScore !== '-' ? awayScore : ''}</div>
+                </div>
+                <div class="game-vs">@</div>
+                <div class="team-info">
+                    <div class="team-name">${escapeHtml(homeTeam)}</div>
+                    <div class="team-score">${homeScore !== '-' ? homeScore : ''}</div>
+                </div>
+            </div>
+        `;
+        
+        scoresContent.appendChild(gameCard);
+    });
+}

@@ -21,73 +21,170 @@
 </head>
 <body>
     <div class="app-container">
-        <header class="top-bar">
-            <div class="logo-section">
-                <span class="logo">🏈</span>
-                <span class="app-name">SportsAI</span>
+        <!-- Chat View (default active) -->
+        <div id="chatView" class="view-section active">
+            <div class="chat-container" id="chatContainer">
+                <div class="welcome-section">
+                    <h2 class="examples-title">What can I help you with?</h2>
+                    <div class="example-prompts">
+                        <button class="example-prompt" data-prompt="Show me the latest NFL scores">
+                            <span class="prompt-icon">📊</span>
+                            <span class="prompt-text">Latest NFL scores</span>
+                        </button>
+                        <button class="example-prompt" data-prompt="Show me recent NFL highlights">
+                            <span class="prompt-icon">🎥</span>
+                            <span class="prompt-text">Recent NFL highlights</span>
+                        </button>
+                        <button class="example-prompt" data-prompt="What is a post route?">
+                            <span class="prompt-icon">📐</span>
+                            <span class="prompt-text">What is a post route?</span>
+                        </button>
+                        <button class="example-prompt" data-prompt="Tell me about my fantasy team">
+                            <span class="prompt-icon">🏆</span>
+                            <span class="prompt-text">My fantasy team</span>
+                        </button>
+                        <button class="example-prompt" data-prompt="Show me the latest injury report">
+                            <span class="prompt-icon">🏥</span>
+                            <span class="prompt-text">Latest injury report</span>
+                        </button>
+                        <button class="example-prompt" data-prompt="Latest NFL news">
+                            <span class="prompt-icon">📰</span>
+                            <span class="prompt-text">Latest NFL news</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="header-actions">
-                <button id="installBtn" class="install-btn" style="display: none;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    <span>Install App</span>
-                </button>
-                <a href="/auth/logout" class="logout-btn">Logout</a>
-            </div>
-        </header>
 
-        <div class="chat-container" id="chatContainer">
-            <div class="welcome-section">
-                <h2 class="examples-title">What can I help you with?</h2>
-                <div class="example-prompts">
-                    <button class="example-prompt" data-prompt="Show me the latest NFL scores">
-                        <span class="prompt-icon">📊</span>
-                        <span class="prompt-text">Latest NFL scores</span>
+            <div class="input-section">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="userInput" 
+                        placeholder="Message SportsAI..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendBtn" class="send-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M7 11L12 6L17 11M12 18V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </button>
-                    <button class="example-prompt" data-prompt="Show me recent NFL highlights">
-                        <span class="prompt-icon">🎥</span>
-                        <span class="prompt-text">Recent NFL highlights</span>
-                    </button>
-                    <button class="example-prompt" data-prompt="What is a post route?">
-                        <span class="prompt-icon">📐</span>
-                        <span class="prompt-text">What is a post route?</span>
-                    </button>
-                    <button class="example-prompt" data-prompt="Tell me about my fantasy team">
-                        <span class="prompt-icon">🏆</span>
-                        <span class="prompt-text">My fantasy team</span>
-                    </button>
-                    <button class="example-prompt" data-prompt="Show me the latest injury report">
-                        <span class="prompt-icon">🏥</span>
-                        <span class="prompt-text">Latest injury report</span>
-                    </button>
-                    <button class="example-prompt" data-prompt="Latest NFL news">
-                        <span class="prompt-icon">📰</span>
-                        <span class="prompt-text">Latest NFL news</span>
-                    </button>
+                </div>
+                <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                    <span></span><span></span><span></span>
                 </div>
             </div>
         </div>
 
-        <div class="input-section">
-            <div class="input-wrapper">
-                <textarea 
-                    id="userInput" 
-                    placeholder="Message SportsAI..."
-                    rows="1"
-                ></textarea>
-                <button id="sendBtn" class="send-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path d="M7 11L12 6L17 11M12 18V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="typing-indicator" id="typingIndicator" style="display: none;">
-                <span></span><span></span><span></span>
+        <!-- Scores View -->
+        <div id="scoresView" class="view-section">
+            <div class="scores-container">
+                <div class="scores-header">
+                    <h2 class="scores-title">Latest Scores</h2>
+                    <div class="week-indicator" id="weekIndicator">Week --</div>
+                </div>
+                <div id="scoresContent" class="scores-content">
+                    <div class="scores-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading scores...</p>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Profile View -->
+        <div id="profileView" class="view-section">
+            <div class="profile-container">
+                <h2 class="profile-title">Profile</h2>
+                
+                <form id="profileForm" class="profile-form" enctype="multipart/form-data">
+                    <div class="profile-section">
+                        <h3>Avatar</h3>
+                        <div class="avatar-section">
+                            <div class="current-avatar" id="currentAvatar">
+                                <img src="/static/avatars/Football_player_red_jersey_bb2ddfcf.png" alt="Current avatar" id="avatarPreview">
+                            </div>
+                            <div class="avatar-options">
+                                <label for="avatarUpload" class="upload-btn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="16 10 12 6 8 10"/>
+                                        <line x1="12" y1="6" x2="12" y2="15"/>
+                                    </svg>
+                                    Upload Image
+                                </label>
+                                <input type="file" id="avatarUpload" name="avatar" accept="image/png,image/jpeg,image/webp" style="display: none;">
+                                
+                                <p class="avatar-help">Or choose a preset:</p>
+                                <div class="preset-avatars" id="presetAvatars">
+                                    <button type="button" class="preset-avatar" data-avatar="0">
+                                        <img src="/static/avatars/Football_player_red_jersey_bb2ddfcf.png" alt="Player 1">
+                                    </button>
+                                    <button type="button" class="preset-avatar" data-avatar="1">
+                                        <img src="/static/avatars/Football_player_blue_jersey_2dc695ec.png" alt="Player 2">
+                                    </button>
+                                    <button type="button" class="preset-avatar" data-avatar="2">
+                                        <img src="/static/avatars/Football_player_green_jersey_d8b5d345.png" alt="Player 3">
+                                    </button>
+                                    <button type="button" class="preset-avatar" data-avatar="3">
+                                        <img src="/static/avatars/Football_player_black_jersey_d05e4675.png" alt="Player 4">
+                                    </button>
+                                    <button type="button" class="preset-avatar" data-avatar="4">
+                                        <img src="/static/avatars/Football_player_white_jersey_77a7368f.png" alt="Player 5">
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>Display Name</h3>
+                        <input 
+                            type="text" 
+                            id="displayName" 
+                            name="display_name"
+                            placeholder="Enter your display name" 
+                            class="profile-input"
+                            maxlength="50"
+                        >
+                    </div>
+
+                    <div class="profile-actions">
+                        <button type="submit" class="save-profile-btn">
+                            Save Profile
+                        </button>
+                        <a href="/auth/logout" class="logout-btn-profile">Logout</a>
+                    </div>
+
+                    <div id="profileMessage" class="profile-message" style="display: none;"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-view="chatView">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Chat</span>
+            </button>
+            <button class="nav-item" data-view="scoresView">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                </svg>
+                <span>Scores</span>
+            </button>
+            <button class="nav-item" data-view="profileView">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Profile</span>
+            </button>
+        </nav>
     </div>
 
     <!-- Image Lightbox Modal -->
@@ -97,8 +194,10 @@
     </div>
 
     <script>
-        // User avatar selection (0-4 for different football player avatars)
+        // User data for frontend
         window.userAvatarId = {{ user_avatar_id }};
+        window.userDisplayName = {{ user_display_name|tojson if user_display_name else 'null' }};
+        window.userCustomAvatar = {{ user_custom_avatar|tojson if user_custom_avatar else 'null' }};
     </script>
     <script src="/static/js/script.js"></script>
     
