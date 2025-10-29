@@ -78,8 +78,11 @@
         <div id="scoresView" class="view-section">
             <div class="scores-container">
                 <div class="scores-header">
-                    <h2 class="scores-title">Latest Scores</h2>
-                    <div class="week-indicator" id="weekIndicator">Week --</div>
+                    <h2 class="scores-title">NFL Scores</h2>
+                    <select id="weekSelector" class="week-selector">
+                        <option value="current">This Week</option>
+                        <option value="next">Next Week</option>
+                    </select>
                 </div>
                 <div id="scoresContent" class="scores-content">
                     <div class="scores-loading">

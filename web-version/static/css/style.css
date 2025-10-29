@@ -670,19 +670,32 @@ body {
     color: var(--text-primary);
 }
 
-.week-indicator {
+.week-selector {
     background: var(--bg-secondary);
+    border: 1px solid var(--border);
     padding: 8px 16px;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.week-selector:hover {
+    border-color: var(--accent);
+}
+
+.week-selector:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
 }
 
 .scores-content {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .scores-loading {
@@ -710,51 +723,60 @@ body {
 .game-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 8px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-}
-
-.game-status {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-.game-teams {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-}
-
-.team-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     gap: 8px;
 }
 
-.team-name {
-    font-size: 16px;
+.game-status {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.game-matchup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.team-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.team-logo-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-logo {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.team-abbr {
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-primary);
-    text-align: center;
 }
 
 .team-score {
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
-}
-
-.game-vs {
-    font-size: 14px;
-    color: var(--text-secondary);
+    min-width: 30px;
+    text-align: right;
 }
 
 /* Profile View */

@@ -51,24 +51,41 @@ OTHER TOOLS:
 **News:** get_nfl_news for trades/rumors. Bullet format with stats
 **Routes/Plays:** analyze_player_routes_plays, then immediately call generate_route_play_diagrams. Show diagrams inline with stats. Use URLs exactly as provided (start with /static/diagrams/)"""
 
-    def get_live_scores(self) -> dict:
-        """Fetch live NFL scores."""
+    def get_live_scores(self, week=None) -> dict:
+        """Fetch live NFL scores for a specific week."""
         try:
             url = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
-            response = requests.get(url, timeout=10)
+            params = {}
+            if week:
+                params['week'] = week
+            
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             
             games = []
             for event in data.get('events', []):
+                competition = event.get('competitions', [{}])[0]
+                competitors = competition.get('competitors', [])
+                
+                home_competitor = competitors[0] if len(competitors) > 0 else {}
+                away_competitor = competitors[1] if len(competitors) > 1 else {}
+                
+                home_team = home_competitor.get('team', {})
+                away_team = away_competitor.get('team', {})
+                
                 game_info = {
                     'game_id': event.get('id', 'N/A'),
                     'name': event.get('name', 'N/A'),
                     'status': event.get('status', {}).get('type', {}).get('description', 'N/A'),
-                    'home_team': event.get('competitions', [{}])[0].get('competitors', [{}])[0].get('team', {}).get('displayName', 'N/A'),
-                    'away_team': event.get('competitions', [{}])[0].get('competitors', [{}])[1].get('team', {}).get('displayName', 'N/A'),
-                    'home_score': event.get('competitions', [{}])[0].get('competitors', [{}])[0].get('score', 'N/A'),
-                    'away_score': event.get('competitions', [{}])[0].get('competitors', [{}])[1].get('score', 'N/A'),
+                    'home_team': home_team.get('displayName', 'N/A'),
+                    'away_team': away_team.get('displayName', 'N/A'),
+                    'home_score': home_competitor.get('score', 'N/A'),
+                    'away_score': away_competitor.get('score', 'N/A'),
+                    'home_logo': home_team.get('logo', ''),
+                    'away_logo': away_team.get('logo', ''),
+                    'home_abbr': home_team.get('abbreviation', ''),
+                    'away_abbr': away_team.get('abbreviation', ''),
                     'date': event.get('date', 'N/A')
                 }
                 games.append(game_info)
@@ -2009,41 +2026,35 @@ Return ONLY the JSON, nothing else."""
     @app.route('/api/scores')
     @require_login
     def get_scores():
-        """Get latest NFL scores for the current gameweek."""
+        """Get latest NFL scores for the current or specified gameweek."""
         try:
             from datetime import timedelta
             
+            # Get week parameter from query string (optional)
+            requested_week = request.args.get('week', type=int)
+            
             # Determine current NFL week
-            # NFL season starts first Thursday of September
-            # Week switches every Wednesday morning (use noon to be safe)
             now = datetime.now()
-            
-            # Simple logic: week changes on Wednesday
-            # For actual implementation, you'd want to use an NFL schedule API
-            # For now, we'll use a simplified version based on date
-            
-            # Get current week number (simplified - you may want to use actual NFL schedule)
-            # NFL 2025 season started around Sep 4, 2025
-            season_start = datetime(2025, 9, 4)  # Approximate first game
+            season_start = datetime(2025, 9, 4)
             days_since_start = (now - season_start).days
             
-            # Each week is 7 days, but advance week on Wednesday
-            # If today is Wed (2) or later in the week, use current week
-            # Otherwise, use previous week
-            current_weekday = now.weekday()  # 0=Mon, 2=Wed
-            if current_weekday < 2:  # Mon or Tue
-                # Still in previous week
+            current_weekday = now.weekday()
+            if current_weekday < 2:
                 days_since_start -= (7 - current_weekday)
             
             current_week = max(1, min(18, (days_since_start // 7) + 1))
             
+            # Use requested week or default to current week
+            week_to_fetch = requested_week if requested_week else None
+            
             # Use the existing get_live_scores method
             if companion:
-                result = companion.get_live_scores()
+                result = companion.get_live_scores(week=week_to_fetch)
                 
                 return jsonify({
                     'success': True,
-                    'week': current_week,
+                    'current_week': current_week,
+                    'week': result.get('week', current_week),
                     'games': result.get('games', []),
                     'status': result.get('status', 'No games available')
                 })

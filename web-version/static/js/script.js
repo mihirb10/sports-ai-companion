@@ -638,20 +638,18 @@ function updateChatAvatars() {
 // ============================
 
 const scoresContent = document.getElementById('scoresContent');
-const weekIndicator = document.getElementById('weekIndicator');
-let scoresLoaded = false;
+const weekSelector = document.getElementById('weekSelector');
+let currentWeekData = null;
 
 // Load scores data
-function loadScores() {
-    if (scoresLoaded) return; // Only load once
+function loadScores(week = 'current') {
+    const weekParam = week === 'next' && currentWeekData ? `?week=${currentWeekData.current_week + 1}` : '';
     
-    fetch('/api/scores')
+    fetch(`/api/scores${weekParam}`)
         .then(response => response.json())
         .then(data => {
-            scoresLoaded = true;
-            
             if (data.success) {
-                weekIndicator.textContent = `Week ${data.week}`;
+                currentWeekData = data;
                 
                 if (data.games && data.games.length > 0) {
                     renderScores(data.games);
@@ -680,7 +678,14 @@ function loadScores() {
         });
 }
 
-// Render scores
+// Week selector change handler
+if (weekSelector) {
+    weekSelector.addEventListener('change', (e) => {
+        loadScores(e.target.value);
+    });
+}
+
+// Render scores with team logos
 function renderScores(games) {
     scoresContent.innerHTML = '';
     
@@ -688,22 +693,25 @@ function renderScores(games) {
         const gameCard = document.createElement('div');
         gameCard.className = 'game-card';
         
-        const homeTeam = game.home_team || game.teams?.home || 'TBD';
-        const awayTeam = game.away_team || game.teams?.away || 'TBD';
-        const homeScore = game.home_score !== undefined ? game.home_score : '-';
-        const awayScore = game.away_score !== undefined ? game.away_score : '-';
-        const status = game.status || game.state || 'Scheduled';
+        const homeScore = game.home_score !== undefined && game.home_score !== 'N/A' ? game.home_score : '-';
+        const awayScore = game.away_score !== undefined && game.away_score !== 'N/A' ? game.away_score : '-';
+        const status = game.status || 'Scheduled';
         
         gameCard.innerHTML = `
             <div class="game-status">${escapeHtml(status)}</div>
-            <div class="game-teams">
-                <div class="team-info">
-                    <div class="team-name">${escapeHtml(awayTeam)}</div>
-                    <div class="team-score">${homeScore !== '-' ? awayScore : ''}</div>
+            <div class="game-matchup">
+                <div class="team-row">
+                    <div class="team-logo-container">
+                        ${game.away_logo ? `<img src="${escapeHtml(game.away_logo)}" alt="${escapeHtml(game.away_abbr)}" class="team-logo">` : ''}
+                        <span class="team-abbr">${escapeHtml(game.away_abbr || 'TBD')}</span>
+                    </div>
+                    <div class="team-score">${awayScore !== '-' ? awayScore : ''}</div>
                 </div>
-                <div class="game-vs">@</div>
-                <div class="team-info">
-                    <div class="team-name">${escapeHtml(homeTeam)}</div>
+                <div class="team-row">
+                    <div class="team-logo-container">
+                        ${game.home_logo ? `<img src="${escapeHtml(game.home_logo)}" alt="${escapeHtml(game.home_abbr)}" class="team-logo">` : ''}
+                        <span class="team-abbr">${escapeHtml(game.home_abbr || 'TBD')}</span>
+                    </div>
                     <div class="team-score">${homeScore !== '-' ? homeScore : ''}</div>
                 </div>
             </div>
