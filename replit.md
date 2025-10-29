@@ -2,7 +2,7 @@
 
 ## Overview
 
-SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with interactive visual diagrams (displayed as thumbnail galleries with fullscreen lightbox viewing), proactive fantasy injury monitoring, integration of NFL news and injury reports, detailed game analysis using play-by-play data, and **ESPN Fantasy Football API integration** for real-time roster management and personalized fantasy advice. Route/play analysis covers the entire current season (9 games) by default. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
+SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with interactive visual diagrams (displayed as thumbnail galleries with fullscreen lightbox viewing), proactive fantasy injury monitoring, integration of NFL news and injury reports, detailed game analysis using play-by-play data, **ESPN Fantasy Football API integration** for real-time roster management and personalized fantasy advice, and **YouTube video highlights** for watching specific plays and touchdowns directly in the chat interface. Route/play analysis covers the entire current season (9 games) by default. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
 
 **Visual Diagrams** are shown automatically inline when users:
 - Ask what a specific route, play, or defensive coverage is (e.g., "What's a post route?", "What is Cover 2?")
@@ -11,6 +11,13 @@ SportsAI is a Flask-based web application providing an intelligent conversationa
 - Ask about a play that just happened in a live game
 
 Diagrams appear inline with each description (not grouped at the bottom). Three types: routes (QB+WR only), plays (full formation with QB/RB/OL/WR), and coverages (defensive formations with zones in red).
+
+**Video Highlights** are embedded directly in chat responses when users:
+- Ask to watch specific plays (e.g., "Show me that touchdown")
+- Request game highlights (e.g., "Chiefs vs Bills highlights")
+- Want to see player-specific plays (e.g., "Mahomes best throws this season")
+
+Videos are fetched via YouTube Data API through Replit's YouTube connector and displayed as responsive embedded players matching the dark theme.
 
 ## User Preferences
 
@@ -81,6 +88,16 @@ Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, sec
 ### Live Sports Data
 
 **ESPN API**: Provides live NFL scores, game statuses, team statistics, and play-by-play data. This is a public endpoint requiring no API key and is integrated via tool calling.
+
+### YouTube Video Integration
+
+**YouTube Data API v3**: Integrated via Replit's YouTube connector for searching and embedding NFL highlights, touchdowns, and specific plays. The connector manages OAuth2 credentials automatically, providing secure API access through environment variables. The `search_play_highlights` tool constructs smart search queries combining player names, teams, play types, and dates to find relevant videos. Videos are embedded directly in chat responses as responsive iframe players with dark-themed styling matching the app's design.
+
+Key features:
+- **Smart Query Building**: Combines player, team, play type, and date to find accurate highlights
+- **Automatic Embedding**: First video is embedded inline; additional videos are provided as clickable links
+- **Responsive Design**: Videos scale appropriately on mobile/desktop with 16:9 aspect ratio
+- **Dark Theme Integration**: iframe styling matches the app's dark color scheme with rounded corners and shadows
 
 ### ESPN Fantasy Football Integration
 
