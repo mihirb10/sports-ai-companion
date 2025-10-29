@@ -351,7 +351,7 @@ document.addEventListener('click', (e) => {
         const promptText = promptButton.getAttribute('data-prompt');
         if (promptText) {
             userInput.value = promptText;
-            sendMessage();
+            userInput.focus();
         }
     }
 });
