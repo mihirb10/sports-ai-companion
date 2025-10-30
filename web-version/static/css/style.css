@@ -1533,6 +1533,28 @@ body {
     background: rgba(239, 68, 68, 0.2);
 }
 
+.check-btn {
+    width: 100%;
+    padding: 10px 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.check-btn:hover {
+    background: #5558dd;
+}
+
+.check-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .predictions-message {
     margin-top: 12px;
     padding: 12px;
