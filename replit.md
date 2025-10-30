@@ -2,22 +2,7 @@
 
 ## Overview
 
-SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, and a modern, dark-themed chat interface. Key capabilities include route and play analysis with interactive visual diagrams (displayed as thumbnail galleries with fullscreen lightbox viewing), proactive fantasy injury monitoring, integration of NFL news and injury reports, detailed game analysis using play-by-play data, **ESPN Fantasy Football API integration** for real-time roster management and personalized fantasy advice, and **YouTube video highlights** for watching specific plays and touchdowns directly in the chat interface. Route/play analysis covers the entire current season (9 games) by default. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data in its responses.
-
-**Visual Diagrams** are shown automatically inline when users:
-- Ask what a specific route, play, or defensive coverage is (e.g., "What's a post route?", "What is Cover 2?")
-- Request play/route/coverage recommendations (e.g., "What route beats zone?", "What coverage should I use?")
-- Ask about a player's favorite routes or plays (e.g., "What are Travis Kelce's best routes?")
-- Ask about a play that just happened in a live game
-
-Diagrams appear inline with each description (not grouped at the bottom). Three types: routes (QB+WR only), plays (full formation with QB/RB/OL/WR), and coverages (defensive formations with zones in red).
-
-**Video Highlights** are embedded directly in chat responses when users:
-- Ask to watch specific plays (e.g., "Show me that touchdown")
-- Request game highlights (e.g., "Chiefs vs Bills highlights")
-- Want to see player-specific plays (e.g., "Mahomes best throws this season")
-
-Videos are fetched via YouTube Data API (using direct API key stored in YOUTUBE_API_KEY secret) and displayed as responsive embedded players matching the dark theme. **Only ONE video is shown per request** - no additional videos are suggested. A compact "Watch on YouTube" fallback link appears below each video for cases where NFL restrictions prevent embedding. **No URLs are ever exposed** in the chat interface - all links are hidden within buttons/embeds. **Minimal text with videos** - when a video is shown, only one or two sentences of observation are included; the video speaks for itself.
+SportsAI is a Flask-based web application providing an intelligent conversational interface for NFL football discussions. It leverages Anthropic's Claude AI for expert analysis on NFL tactics, live game information, fantasy football advice, and strategic discussions. The application features user authentication, persistent conversation history, a modern dark-themed chat interface, and PWA capabilities. Key capabilities include route and play analysis with interactive visual diagrams, proactive fantasy injury monitoring, integration of NFL news and injury reports, detailed game analysis using play-by-play data, ESPN Fantasy Football API integration for real-time roster management, and YouTube video highlights for specific plays. The AI agent is designed as a stats-focused sports expert, prioritizing quantifiable facts and data.
 
 ## User Preferences
 
@@ -25,143 +10,84 @@ Preferred communication style: Simple, everyday language. Keep responses concise
 
 ## System Architecture
 
-### Authentication Architecture
+### Authentication
 
-SportsAI integrates Replit Auth for OAuth2-based authentication, supporting Google and email/password login. User sessions are managed with Flask-Login, allowing persistent access across devices. User accounts are stored in PostgreSQL, each with isolated conversation history.
+SportsAI integrates Replit Auth for OAuth2-based authentication (Google, email/password). User sessions are managed with Flask-Login, and accounts are stored in PostgreSQL with isolated conversation history.
 
-### Database Architecture
+### Database
 
-The application uses PostgreSQL (via Replit's managed service) with SQLAlchemy ORM. The schema includes tables for `Users` (storing Replit Auth IDs, profile info, `display_name`, and `custom_avatar_path`), `OAuth` (for tokens and browser session keys), and `Conversations` (storing serialized JSON conversation history, fantasy context, and recent analysis context per user). The `recent_analysis_context` field enables the AI to remember route/play analysis when users respond affirmatively to follow-up questions. Conversation records are lazily created and linked to `user_id` for persistence.
+Utilizes PostgreSQL (Replit's managed service) with SQLAlchemy ORM. The schema includes `Users`, `OAuth`, and `Conversations` tables. `Conversations` stores serialized JSON history, fantasy context, and recent analysis context per user, enabling AI memory for follow-up questions.
 
-**Schema Note**: The `display_name` and `custom_avatar_path` columns were added manually via SQL ALTER statements. For new deployments, these columns must be created before the application starts.
+### Frontend
 
-### Frontend Architecture
+Built with Vanilla JavaScript, HTML5, and CSS3, following a single-page application pattern with `login.html` and `index.html`. Features a modern dark theme (`#1a1a1a`). A mobile-friendly bottom navigation bar includes Chat, Scores, and Profile tabs.
+- **Chat Tab**: Full-height container with message bubbles and an auto-expanding input box.
+- **Scores Tab**: Displays live NFL scores with real-time auto-refresh, a week selector, and expandable game cards showing detailed scoring plays, play-by-play updates, and team statistics.
+- **Profile Tab**: User profile management with custom display name input, avatar upload (PNG, JPEG, WebP up to 5MB), and 5 preset football player avatars.
+Tab state persists in localStorage, and all views use CSS-based toggling. Custom user avatars are displayed in chat messages.
 
-Built with Vanilla JavaScript, HTML5, and CSS3, the frontend follows a single-page application pattern. It features a `login.html` for unauthenticated access and an `index.html` for the chat interface. The UI boasts a modern dark theme (`#1a1a1a` primary background) inspired by Claude/Gemini.
+### Progressive Web App (PWA)
 
-**Bottom Navigation Design** (October 2025): The UI uses a mobile-friendly bottom navigation bar with three tabs:
-- **Chat Tab**: Full-height chat container with message bubbles (user 👤 with custom avatar, assistant 🏈), auto-expanding input box, and smooth animations
-- **Scores Tab**: Displays live NFL scores for the current gameweek (switches every Wednesday at noon), with automatic refresh and caching
-- **Profile Tab**: User profile management with custom display name input, avatar upload (supports PNG, JPEG, WebP up to 5MB), and 5 preset football player avatars
+Implemented as a PWA for native app-like behavior:
+- Custom App Icon (192×192, 512×512, 180×180 for iOS).
+- Full PWA manifest (`static/manifest.json`).
+- Service Worker (`static/sw.js`) for intelligent caching and offline support.
+- Custom "Install App" button appears in the header when available.
+- Supports Android (Chrome), iOS (Safari), and desktop browsers, opening full-screen in standalone mode.
 
-Tab state persists in localStorage, and all views use CSS-based show/hide toggling. Custom user avatars from the profile replace the previous generated player images in chat messages.
+### Backend
 
-### Progressive Web App (PWA) Features
+A Flask application using an application-factory pattern. Key components:
+- SQLAlchemy ORM for database interactions.
+- Replit Auth blueprint for login.
+- Main Flask app handling routes and business logic.
+- `NFLCompanion` class manages AI interaction and tool use.
+Conversations are database-backed, and `@require_login` protects chat routes.
 
-SportsAI is implemented as a Progressive Web App, enabling installation on mobile devices with native app-like behavior:
-- **Custom App Icon**: Professional football-themed icon (192×192, 512×512, 180×180 for iOS)
-- **Manifest Configuration**: Full PWA manifest (`static/manifest.json`) with app metadata, theme colors, and installation shortcuts
-- **Service Worker**: Offline support with intelligent caching strategy (`static/sw.js`) for core assets
-- **Install Button**: Custom "Install App" button appears in the header when PWA installation is available
-- **Cross-Platform Support**: Works on Android (Chrome), iOS (Safari), and desktop browsers
-- **Standalone Mode**: Opens full-screen without browser UI when installed
-- **Offline Capability**: Cached assets allow basic functionality without internet connection
+### API Integration
 
-Installation methods:
-1. **Automatic**: Custom "Install App" button in header (when available)
-2. **Manual Android**: Chrome menu → "Install app" or "Add to Home Screen"
-3. **Manual iOS**: Safari Share → "Add to Home Screen"
+Exposes a RESTful JSON API with endpoints like `/chat`, `/auth/login`, `/auth/logout`, `/api/profile`, and `/api/scores`. Authentication uses Replit Auth's OAuth flow. Error handling includes try-catch for external APIs and graceful degradation.
+- **Profile Management**: `/api/profile` handles custom avatar uploads (to `/static/uploads/avatars/`) and preset avatar selection, with validation for type and size (max 5MB).
+- **Scores API**: `/api/scores` calculates current NFL gameweek, fetches live scores from ESPN's public API, and caches results hourly.
 
-### Backend Architecture
+### Security
 
-The backend is a Flask application utilizing an application-factory pattern. Core components include:
-- **Models**: SQLAlchemy ORM for database interactions.
-- **Authentication**: Replit Auth blueprint for login management.
-- **Application**: Main Flask app handling routes and business logic.
-- **NFLCompanion Class**: Manages AI interaction and tool use.
-
-Key design decisions include database-backed persistence for conversations, the application factory pattern for modularity, and `@require_login` decorators to protect chat routes. The `NFLCompanion` class implements Anthropic's tool use API for dynamic data access.
-
-### API Integration Pattern
-
-The application exposes a RESTful JSON API with endpoints like `/chat` (for AI interaction), `/auth/login`, `/auth/logout`, `/api/profile` (GET/POST for profile management with secure file uploads), and `/api/scores` (for fetching current gameweek NFL scores). Authentication is handled via Replit Auth, redirecting users through the OAuth flow. Error handling involves try-catch blocks for external API calls, graceful degradation, and redirects for authentication failures.
-
-**Profile Management**: The `/api/profile` endpoint supports both custom avatar uploads (stored in `/static/uploads/avatars/` with secure filename handling) and preset avatar selection (5 generated football player images). File uploads are validated for type (image/png, image/jpeg, image/webp) and size (max 5MB).
-
-**Scores API**: The `/api/scores` endpoint calculates the current NFL gameweek based on Wednesday transitions (season starts Sep 4, 2025) and fetches live scores from ESPN's public API. Results are cached hourly to reduce external API calls.
-
-### Security Considerations
-
-Security measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, secure session management, API keys stored in Replit Secrets, and database security via connection pooling and ORM-based SQL injection prevention. User input is sanitized, and Claude's safety features manage content moderation.
+Measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, secure session management, API keys in Replit Secrets, and ORM-based SQL injection prevention. User input is sanitized, and Claude's safety features manage content moderation.
 
 ## External Dependencies
 
-### AI Service Integration
+### AI Service
 
-**Anthropic Claude API**: Utilizes Claude Sonnet 4 for conversational AI, including tool/function calling for dynamic data retrieval. Requires `ANTHROPIC_API_KEY`.
+**Anthropic Claude API**: Utilizes Claude Sonnet 4 for conversational AI and tool/function calling. Requires `ANTHROPIC_API_KEY`.
 
 ### Authentication Service
 
-**Replit Auth**: Serves as the OpenID Connect provider, configured for Google and email/password authentication. Manages user profiles and token refreshes.
+**Replit Auth**: OpenID Connect provider for Google and email/password authentication, managing user profiles and token refreshes.
 
 ### Database Service
 
-**PostgreSQL**: Provided by Replit (Neon-backed), used for persistent storage of user data, OAuth tokens, and conversation histories. Accessed via Flask-SQLAlchemy and Psycopg2.
+**PostgreSQL**: Replit's managed (Neon-backed) service for persistent storage of user data, OAuth tokens, and conversation histories.
 
 ### Live Sports Data
 
-**ESPN API**: Provides live NFL scores, game statuses, team statistics, and play-by-play data. This is a public endpoint requiring no API key and is integrated via tool calling.
+**ESPN API**: Public endpoint providing live NFL scores, game statuses, team statistics, and play-by-play data via tool calling.
 
 ### YouTube Video Integration
 
-**YouTube Data API v3**: Integrated using a direct API key (`YOUTUBE_API_KEY` stored in Replit Secrets) for searching and embedding NFL highlights, touchdowns, and specific plays. The `search_play_highlights` tool uses a dual-search strategy: it searches for embeddable fan uploads and highlight channels (excluding official NFL channel) for the actual video embed, then separately finds official NFL footage for the fallback button. This ensures videos actually play while still providing access to official content.
-
-Key features:
-- **Direct API Access**: Uses `googleapiclient.discovery.build()` with `developerKey` parameter for simple, reliable authentication
-- **Smart Dual Search**: First searches for embeddable fan uploads/highlight channels (excludes NFL channel), then finds official NFL video for fallback link
-- **Embeddable Video Priority**: Only returns videos marked as embeddable (`videoEmbeddable='true'`) to maximize playback success
-- **Single Video per Request**: Only ONE video is embedded per user request - no additional videos suggested
-- **Official NFL Fallback**: "Official NFL footage here" button links to the official NFL video for users who want the source
-- **No Exposed URLs**: All links are hidden within buttons/embeds - clean, URL-free chat interface
-- **Responsive Design**: Videos scale appropriately on mobile/desktop with 16:9 aspect ratio
-- **Dark Theme Integration**: iframe styling matches the app's dark color scheme with rounded corners and shadows
-- **Graceful Quota Handling**: When YouTube API daily quota is exceeded, the system silently skips videos and provides text responses only (quota resets at midnight Pacific Time)
-- **User-Owned Quota**: Uses the user's own Google Cloud project quota (10,000 units/day = ~100 searches)
+**YouTube Data API v3**: Integrated using a direct API key (`YOUTUBE_API_KEY`) for embedding NFL highlights. Employs a dual-search strategy for embeddable fan content and official NFL fallback links, ensuring only one video per request, no exposed URLs, and dark-themed responsive embeds. Gracefully handles quota limits.
 
 ### ESPN Fantasy Football Integration
 
-**ESPN Fantasy Football API**: Integrated via the `espn-api` Python library to fetch real-time fantasy team data including roster, matchups, and standings. **Per-user credential storage** ensures each user's ESPN league credentials are stored in their individual database record. The integration provides:
-- **Real roster data**: Pulls actual team roster with player names, positions, points, and injury statuses
-- **Current matchup**: Shows live scores and projections for the current week's matchup
-- **League standings**: Displays win-loss records and league rankings
-- **Personalized advice**: AI uses actual roster data to provide start/sit recommendations and fantasy strategy
-- **Automatic credential reuse**: Once credentials are provided, they're automatically used for all future requests
-
-**First-Time User Onboarding Flow**:
-When users ask about fantasy football for the first time, the AI presents a structured onboarding message explaining:
-1. **Option 1**: Manually input roster (for users who prefer manual tracking)
-2. **Option 2**: Connect ESPN league (recommended for automatic roster sync)
-
-For ESPN integration, the AI provides:
-- Clear instructions on where to find League ID (in the ESPN URL)
-- Step-by-step guide to extract ESPN_S2 and SWID cookies from browser developer tools (required for private leagues only)
-- A markdown table format for users to fill out their credentials
-
-**Credential Storage & Security**:
-- Credentials are stored in each user's `fantasy_context` database field (JSON)
-- No global environment variables - each user has their own isolated credentials
-- Supports both public leagues (League ID only) and private leagues (League ID + ESPN_S2 + SWID)
-- Credentials are automatically injected when calling ESPN API tools
-
-**Two-Step Team Selection with Context Retention**:
-1. First call shows all teams in the league
-2. AI asks "Tell me which team is yours and I'll pull your current roster, this week's matchup, and give you personalized start/sit recommendations! 🎯"
-3. System sets `awaiting_team_selection` flag in user's fantasy_context
-4. User's next message is automatically treated as their team name selection
-5. System injects context telling AI the user's message is their team selection
-6. System remembers team name for automatic use in all future requests
-7. Flag is cleared once roster data is successfully fetched
-
-Error handling includes specific messages for invalid credentials, expired cookies, rate limiting, and league access issues.
+**ESPN Fantasy Football API**: Integrated via `espn-api` Python library to fetch real-time fantasy team data (roster, matchups, standings). Supports per-user credential storage in `fantasy_context` field, allowing personalized advice. Includes a first-time user onboarding flow for credential input and a two-step team selection process with context retention.
 
 ### Python Dependencies
 
-Key Python libraries include `flask`, `flask-sqlalchemy`, `flask-login`, `anthropic`, `psycopg2-binary`, `sqlalchemy`, `requests`, `espn-api` (for ESPN Fantasy Football integration), `feedparser` (for NFL news), `matplotlib` (for route/play diagrams), and `gunicorn` for production deployment.
+Key libraries: `flask`, `flask-sqlalchemy`, `flask-login`, `anthropic`, `psycopg2-binary`, `sqlalchemy`, `requests`, `espn-api`, `feedparser`, `matplotlib`, `gunicorn`.
 
 ### Hosting Platform
 
-**Replit**: The application is optimized for Replit deployment, leveraging its managed PostgreSQL, secrets management, and Gunicorn for scaling.
+**Replit**: Optimized for deployment on Replit, leveraging its managed PostgreSQL, secrets management, and Gunicorn.
 
 ### Static Assets
 
-The frontend uses custom CSS with variables for theming, Vanilla JavaScript for interactivity, and SVG icons for UI elements.
+Custom CSS with variables for theming, Vanilla JavaScript for interactivity, and SVG icons.
