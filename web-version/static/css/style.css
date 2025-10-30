@@ -779,6 +779,24 @@ body {
     text-align: right;
 }
 
+.game-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.game-time,
+.game-location {
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /* Profile View */
 .profile-container {
     flex: 1;

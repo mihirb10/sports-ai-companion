@@ -74,6 +74,19 @@ OTHER TOOLS:
                 home_team = home_competitor.get('team', {})
                 away_team = away_competitor.get('team', {})
                 
+                # Extract venue information
+                venue = competition.get('venue', {})
+                venue_name = venue.get('fullName', 'TBD')
+                venue_city = venue.get('address', {}).get('city', '')
+                venue_state = venue.get('address', {}).get('state', '')
+                
+                # Format location
+                location = venue_name
+                if venue_city and venue_state:
+                    location = f"{venue_name}, {venue_city}, {venue_state}"
+                elif venue_city:
+                    location = f"{venue_name}, {venue_city}"
+                
                 game_info = {
                     'game_id': event.get('id', 'N/A'),
                     'name': event.get('name', 'N/A'),
@@ -86,7 +99,8 @@ OTHER TOOLS:
                     'away_logo': away_team.get('logo', ''),
                     'home_abbr': home_team.get('abbreviation', ''),
                     'away_abbr': away_team.get('abbreviation', ''),
-                    'date': event.get('date', 'N/A')
+                    'date': event.get('date', 'N/A'),
+                    'location': location
                 }
                 games.append(game_info)
             

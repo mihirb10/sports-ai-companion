@@ -728,6 +728,20 @@ function renderScores(games) {
         const awayScore = game.away_score !== undefined && game.away_score !== 'N/A' ? game.away_score : '-';
         const status = game.status || 'Scheduled';
         
+        // Format kickoff time
+        let kickoffTime = '';
+        if (game.date && game.date !== 'N/A') {
+            const date = new Date(game.date);
+            kickoffTime = date.toLocaleString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
         gameCard.innerHTML = `
             <div class="game-status">${escapeHtml(status)}</div>
             <div class="game-matchup">
@@ -746,6 +760,12 @@ function renderScores(games) {
                     <div class="team-score">${homeScore !== '-' ? homeScore : ''}</div>
                 </div>
             </div>
+            ${kickoffTime || game.location ? `
+                <div class="game-details">
+                    ${kickoffTime ? `<div class="game-time">🕐 ${escapeHtml(kickoffTime)}</div>` : ''}
+                    ${game.location ? `<div class="game-location">📍 ${escapeHtml(game.location)}</div>` : ''}
+                </div>
+            ` : ''}
         `;
         
         scoresContent.appendChild(gameCard);
