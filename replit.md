@@ -16,14 +16,16 @@ SportsAI integrates Replit Auth for OAuth2-based authentication (Google, email/p
 
 ### Database
 
-Utilizes PostgreSQL (Replit's managed service) with SQLAlchemy ORM. The schema includes `Users`, `OAuth`, and `Conversations` tables. `Conversations` stores serialized JSON history, fantasy context, and recent analysis context per user, enabling AI memory for follow-up questions.
+Utilizes PostgreSQL (Replit's managed service) with SQLAlchemy ORM. The schema includes `Users`, `OAuth`, and `Conversations` tables. `Users` stores profile data (display_name, custom_avatar_path), fantasy team data (fantasy_scoring_system, fantasy_roster, espn_league_id, espn_s2, espn_swid). `Conversations` stores serialized JSON history, fantasy context, and recent analysis context per user, enabling AI memory for follow-up questions.
 
 ### Frontend
 
-Built with Vanilla JavaScript, HTML5, and CSS3, following a single-page application pattern with `login.html` and `index.html`. Features a modern dark theme (`#1a1a1a`). A mobile-friendly bottom navigation bar includes Chat, Scores, and Profile tabs.
+Built with Vanilla JavaScript, HTML5, and CSS3, following a single-page application pattern with `login.html` and `index.html`. Features a modern dark theme (`#1a1a1a`). A mobile-friendly bottom navigation bar includes Chat, Scores, Fantasy, Predictions, and Profile tabs.
 - **Chat Tab**: Full-height container with message bubbles and an auto-expanding input box.
-- **Scores Tab**: Displays live NFL scores with real-time auto-refresh, a week selector, and expandable game cards showing detailed scoring plays, play-by-play updates, and team statistics.
-- **Profile Tab**: User profile management with custom display name input, avatar upload (PNG, JPEG, WebP up to 5MB), and 5 preset football player avatars.
+- **Scores Tab**: Displays live NFL scores with real-time auto-refresh every 30 seconds when games are live, a week selector, and expandable game cards showing detailed scoring plays, play-by-play updates, and team statistics.
+- **Fantasy Tab**: Complete fantasy team management with scoring system selection (PPR, Half PPR, Standard), manual player roster entry with position-based slots (QB, RB, WR, TE, FLEX, K, DEF, Bench, IR), dynamic add/delete slot functionality, and optional ESPN Fantasy Football API integration via League ID and cookies. Data stored in User table (fantasy_scoring_system, fantasy_roster, espn_league_id, espn_s2, espn_swid).
+- **Predictions Tab**: Placeholder for future prediction features.
+- **Profile Tab**: User profile management with custom display name input, avatar upload (PNG, JPEG, WebP up to 5MB), and 5 comic book style preset football player avatars.
 Tab state persists in localStorage, and all views use CSS-based toggling. Custom user avatars are displayed in chat messages.
 
 ### Progressive Web App (PWA)
@@ -46,9 +48,11 @@ Conversations are database-backed, and `@require_login` protects chat routes.
 
 ### API Integration
 
-Exposes a RESTful JSON API with endpoints like `/chat`, `/auth/login`, `/auth/logout`, `/api/profile`, and `/api/scores`. Authentication uses Replit Auth's OAuth flow. Error handling includes try-catch for external APIs and graceful degradation.
+Exposes a RESTful JSON API with endpoints like `/chat`, `/auth/login`, `/auth/logout`, `/api/profile`, `/api/fantasy`, `/api/scores`, and `/api/game/<game_id>`. Authentication uses Replit Auth's OAuth flow. Error handling includes try-catch for external APIs and graceful degradation.
 - **Profile Management**: `/api/profile` handles custom avatar uploads (to `/static/uploads/avatars/`) and preset avatar selection, with validation for type and size (max 5MB).
+- **Fantasy Team Management**: `/api/fantasy` saves/loads fantasy team data including scoring system, roster, and ESPN credentials.
 - **Scores API**: `/api/scores` calculates current NFL gameweek, fetches live scores from ESPN's public API, and caches results hourly.
+- **Game Details API**: `/api/game/<game_id>` fetches detailed game information including scoring plays, play-by-play data, and team statistics from ESPN.
 
 ### Security
 
@@ -78,7 +82,7 @@ Measures include OAuth2 + OpenID Connect via Replit Auth with PKCE, secure sessi
 
 ### ESPN Fantasy Football Integration
 
-**ESPN Fantasy Football API**: Integrated via `espn-api` Python library to fetch real-time fantasy team data (roster, matchups, standings). Supports per-user credential storage in `fantasy_context` field, allowing personalized advice. Includes a first-time user onboarding flow for credential input and a two-step team selection process with context retention.
+**ESPN Fantasy Football API**: Integrated via `espn-api` Python library to fetch real-time fantasy team data (roster, matchups, standings). Users configure their fantasy team via the Fantasy tab, which stores credentials and roster in the User table. AI agent never asks for credentials in chat - always directs users to Fantasy tab. Agent loads fantasy data from User table for personalized advice.
 
 ### Python Dependencies
 
