@@ -517,14 +517,17 @@ function loadProfile() {
                 if (profile.custom_avatar_path) {
                     avatarPreview.src = profile.custom_avatar_path;
                 } else {
-                    avatarPreview.src = `/static/avatars/player${profile.fallback_avatar_id}.png`;
+                    const comicAvatars = ['comic_red.png', 'comic_blue.png', 'comic_green.png', 'comic_black.png', 'comic_white.png'];
+                    avatarPreview.src = `/static/avatars/${comicAvatars[profile.fallback_avatar_id]}`;
                 }
                 
                 // Highlight selected preset if applicable
-                if (profile.custom_avatar_path && profile.custom_avatar_path.includes('/static/avatars/player')) {
-                    const avatarId = profile.custom_avatar_path.match(/player(\d)\.png/);
-                    if (avatarId) {
-                        const presetBtn = document.querySelector(`[data-avatar="${avatarId[1]}"]`);
+                if (profile.custom_avatar_path && profile.custom_avatar_path.includes('/static/avatars/comic_')) {
+                    const avatarMatch = profile.custom_avatar_path.match(/comic_(red|blue|green|black|white)\.png/);
+                    if (avatarMatch) {
+                        const colorMap = { red: 0, blue: 1, green: 2, black: 3, white: 4 };
+                        const avatarId = colorMap[avatarMatch[1]];
+                        const presetBtn = document.querySelector(`[data-avatar="${avatarId}"]`);
                         if (presetBtn) {
                             presetBtn.classList.add('selected');
                         }
@@ -549,7 +552,8 @@ presetAvatars.forEach(button => {
         // Update preview
         const avatarId = button.getAttribute('data-avatar');
         selectedPresetAvatar = avatarId;
-        avatarPreview.src = `/static/avatars/player${avatarId}.png`;
+        const comicAvatars = ['comic_red.png', 'comic_blue.png', 'comic_green.png', 'comic_black.png', 'comic_white.png'];
+        avatarPreview.src = `/static/avatars/${comicAvatars[avatarId]}`;
         
         // Clear file input
         avatarUploadInput.value = '';
@@ -943,3 +947,181 @@ function renderGameDetails(data, container) {
     
     container.innerHTML = html;
 }
+
+// ============================
+// Fantasy Team Management
+// ============================
+
+const scoringSystemSelect = document.getElementById('scoringSystem');
+const leagueIdInput = document.getElementById('leagueId');
+const espnS2Input = document.getElementById('espnS2');
+const espnSwidInput = document.getElementById('espnSwid');
+const rosterSlotsContainer = document.getElementById('rosterSlots');
+const addSlotBtn = document.getElementById('addSlotBtn');
+const saveFantasyBtn = document.getElementById('saveFantasyBtn');
+const fantasyMessage = document.getElementById('fantasyMessage');
+
+let rosterSlots = [];
+
+// Position options for fantasy roster
+const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'Bench', 'IR'];
+
+// Default roster template
+const DEFAULT_ROSTER = [
+    { position: 'QB', player: '' },
+    { position: 'RB', player: '' },
+    { position: 'RB', player: '' },
+    { position: 'WR', player: '' },
+    { position: 'WR', player: '' },
+    { position: 'TE', player: '' },
+    { position: 'FLEX', player: '' },
+    { position: 'K', player: '' },
+    { position: 'DEF', player: '' },
+    { position: 'Bench', player: '' },
+    { position: 'Bench', player: '' },
+    { position: 'Bench', player: '' },
+    { position: 'Bench', player: '' },
+    { position: 'Bench', player: '' },
+    { position: 'IR', player: '' }
+];
+
+// Load fantasy team data
+function loadFantasyTeam() {
+    fetch('/api/fantasy')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const fantasy = data.fantasy;
+                
+                // Set form values
+                scoringSystemSelect.value = fantasy.scoring_system || '';
+                leagueIdInput.value = fantasy.league_id || '';
+                espnS2Input.value = fantasy.espn_s2 || '';
+                espnSwidInput.value = fantasy.espn_swid || '';
+                
+                // Load roster
+                try {
+                    const roster = JSON.parse(fantasy.roster || '[]');
+                    rosterSlots = roster.length > 0 ? roster : [...DEFAULT_ROSTER];
+                } catch (e) {
+                    rosterSlots = [...DEFAULT_ROSTER];
+                }
+                
+                renderRosterSlots();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading fantasy team:', error);
+            // Initialize with default roster on error
+            rosterSlots = [...DEFAULT_ROSTER];
+            renderRosterSlots();
+        });
+}
+
+// Render roster slots
+function renderRosterSlots() {
+    rosterSlotsContainer.innerHTML = '';
+    
+    rosterSlots.forEach((slot, index) => {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'roster-slot';
+        slotEl.innerHTML = `
+            <select class="position-select" data-index="${index}">
+                ${POSITIONS.map(pos => 
+                    `<option value="${pos}" ${pos === slot.position ? 'selected' : ''}>${pos}</option>`
+                ).join('')}
+            </select>
+            <input 
+                type="text" 
+                class="player-input" 
+                data-index="${index}" 
+                placeholder="Enter player name"
+                value="${escapeHtml(slot.player || '')}"
+            >
+            <button class="delete-slot-btn" data-index="${index}">×</button>
+        `;
+        rosterSlotsContainer.appendChild(slotEl);
+    });
+    
+    // Add event listeners
+    document.querySelectorAll('.position-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            rosterSlots[index].position = e.target.value;
+        });
+    });
+    
+    document.querySelectorAll('.player-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            rosterSlots[index].player = e.target.value;
+        });
+    });
+    
+    document.querySelectorAll('.delete-slot-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            rosterSlots.splice(index, 1);
+            renderRosterSlots();
+        });
+    });
+}
+
+// Add new slot
+if (addSlotBtn) {
+    addSlotBtn.addEventListener('click', () => {
+        rosterSlots.push({ position: 'Bench', player: '' });
+        renderRosterSlots();
+    });
+}
+
+// Save fantasy team
+if (saveFantasyBtn) {
+    saveFantasyBtn.addEventListener('click', () => {
+        const data = {
+            scoring_system: scoringSystemSelect.value,
+            roster: JSON.stringify(rosterSlots),
+            league_id: leagueIdInput.value,
+            espn_s2: espnS2Input.value,
+            espn_swid: espnSwidInput.value
+        };
+        
+        fetch('/api/fantasy', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showFantasyMessage('Fantasy team saved successfully!', 'success');
+            } else {
+                showFantasyMessage('Error saving fantasy team', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving fantasy team:', error);
+            showFantasyMessage('Error saving fantasy team', 'error');
+        });
+    });
+}
+
+function showFantasyMessage(message, type) {
+    fantasyMessage.textContent = message;
+    fantasyMessage.className = `fantasy-message ${type}`;
+    fantasyMessage.style.display = 'block';
+    setTimeout(() => {
+        fantasyMessage.style.display = 'none';
+    }, 3000);
+}
+
+// Update switchView to load fantasy data when switching to fantasy tab
+const originalSwitchView = switchView;
+switchView = function(viewId) {
+    originalSwitchView(viewId);
+    if (viewId === 'fantasyView') {
+        loadFantasyTeam();
+    }
+};

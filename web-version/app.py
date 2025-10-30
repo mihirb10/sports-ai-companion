@@ -44,7 +44,7 @@ MANDATORY TOOL CALLS - DO THESE FIRST:
 
 OTHER TOOLS:
 
-**Fantasy:** Check FANTASY FOOTBALL CONTEXT for saved credentials. First time: ask for ESPN League ID (from URL), ESPN_S2 & SWID cookies (F12→Cookies→espn.com, private leagues only). Call get_fantasy_team without team_name to show all teams, then with team_name after selection. Credentials auto-save for future use
+**Fantasy:** Check FANTASY FOOTBALL CONTEXT for saved team and credentials. If no fantasy team is configured, direct user to the Fantasy tab (bottom navigation) to set up their team - they can choose scoring system, manually enter players, or connect ESPN league. Never ask for league IDs or cookies in chat - always point to Fantasy tab. Once configured, use fantasy data from context for personalized advice
 **Scores:** get_live_scores for current games. Filter by date for "today" queries
 **Recap:** get_live_scores for game_id, then get_play_by_play. Show scoring plays, top performers with stats
 **Injuries:** get_injury_report (optional team_name). Explain: Out/Doubtful/Questionable/IR
@@ -1649,6 +1649,23 @@ def create_app():
             injury_update_message = None
             fantasy_context = json.loads(conversation.fantasy_context)
             
+            # Load fantasy team from user's database fields (takes precedence)
+            if current_user.fantasy_roster:
+                try:
+                    roster = json.loads(current_user.fantasy_roster)
+                    # Convert roster format to my_team format
+                    fantasy_context['my_team'] = [slot['player'] for slot in roster if slot.get('player')]
+                except:
+                    pass
+            
+            # Load ESPN credentials from user fields
+            if current_user.espn_league_id:
+                fantasy_context['espn_league_id'] = current_user.espn_league_id
+            if current_user.espn_s2:
+                fantasy_context['espn_s2'] = current_user.espn_s2
+            if current_user.espn_swid:
+                fantasy_context['espn_swid'] = current_user.espn_swid
+            
             # Check if we should run injury check
             should_check_injuries = False
             if conversation.last_injury_check is None:
@@ -1744,6 +1761,27 @@ def create_app():
             # If fantasy football question, prepend fantasy context
             elif is_fantasy_question:
                 fantasy_context = json.loads(conversation.fantasy_context)
+                
+                # Load fantasy team from user's database fields (takes precedence)
+                if current_user.fantasy_roster:
+                    try:
+                        roster = json.loads(current_user.fantasy_roster)
+                        # Convert roster format to my_team format
+                        fantasy_context['my_team'] = [slot['player'] for slot in roster if slot.get('player')]
+                        # Add scoring system info
+                        if current_user.fantasy_scoring_system:
+                            fantasy_context['scoring_system'] = current_user.fantasy_scoring_system
+                    except:
+                        pass
+                
+                # Load ESPN credentials from user fields
+                if current_user.espn_league_id:
+                    fantasy_context['espn_league_id'] = current_user.espn_league_id
+                if current_user.espn_s2:
+                    fantasy_context['espn_s2'] = current_user.espn_s2
+                if current_user.espn_swid:
+                    fantasy_context['espn_swid'] = current_user.espn_swid
+                
                 has_context = (fantasy_context.get('my_team') or 
                              fantasy_context.get('interested_players') or 
                              fantasy_context.get('trade_history') or
@@ -1751,6 +1789,15 @@ def create_app():
                 
                 if has_context:
                     context_message = "FANTASY FOOTBALL CONTEXT:\n"
+                    
+                    # User's fantasy team from Fantasy tab
+                    if fantasy_context.get('my_team'):
+                        context_message += f"User's Fantasy Team (from Fantasy tab):\n"
+                        for player in fantasy_context['my_team']:
+                            context_message += f"  • {player}\n"
+                        if fantasy_context.get('scoring_system'):
+                            context_message += f"Scoring System: {fantasy_context['scoring_system']}\n"
+                        context_message += "\n"
                     
                     # ESPN credentials (user-specific, stored in their context)
                     if fantasy_context.get('espn_league_id'):

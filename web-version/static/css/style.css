@@ -1136,3 +1136,197 @@ body {
         font-size: 11px;
     }
 }
+
+/* Fantasy View */
+.fantasy-container,
+.predictions-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    padding-bottom: 80px;
+}
+
+.fantasy-title,
+.predictions-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.fantasy-section {
+    margin-bottom: 24px;
+}
+
+.fantasy-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.fantasy-help {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.fantasy-select,
+.fantasy-input {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.fantasy-input-group {
+    margin-bottom: 12px;
+}
+
+.fantasy-input-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.roster-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.roster-slot {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.position-select {
+    width: 100px;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.player-input {
+    flex: 1;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.delete-slot-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--danger);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.delete-slot-btn:hover {
+    background: #dc2626;
+}
+
+.add-slot-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-slot-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.fantasy-actions {
+    margin-top: 24px;
+}
+
+.save-fantasy-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.save-fantasy-btn:hover {
+    background: #5558dd;
+}
+
+.fantasy-message {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.fantasy-message.success {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.fantasy-message.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Predictions View */
+.predictions-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+.predictions-placeholder {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+/* Update bottom nav for 5 tabs */
+.bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.bottom-nav .nav-item {
+    font-size: 11px;
+}
+
+.bottom-nav .nav-item svg {
+    width: 20px;
+    height: 20px;
+}
