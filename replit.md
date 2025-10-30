@@ -16,7 +16,7 @@ SportsAI integrates Replit Auth for OAuth2-based authentication (Google, email/p
 
 ### Database
 
-Utilizes PostgreSQL (Replit's managed service) with SQLAlchemy ORM. The schema includes `Users`, `OAuth`, `Conversations`, and `Predictions` tables. `Users` stores profile data (display_name, custom_avatar_path), fantasy team data (fantasy_scoring_system, fantasy_roster, espn_league_id, espn_s2, espn_swid). `Conversations` stores serialized JSON history, fantasy context, and recent analysis context per user, enabling AI memory for follow-up questions. `Predictions` stores user predictions with text, outcome (pending/correct/incorrect), and created/resolved dates.
+Utilizes PostgreSQL (Replit's managed service) with SQLAlchemy ORM. The schema includes `Users`, `OAuth`, `Conversations`, `Predictions`, and `ErrorLog` tables. `Users` stores profile data (display_name, custom_avatar_path), fantasy team data (fantasy_scoring_system, fantasy_roster, espn_league_id, espn_s2, espn_swid). `Conversations` stores serialized JSON history, fantasy context, and recent analysis context per user, enabling AI memory for follow-up questions. `Predictions` stores user predictions with text, outcome (pending/correct/incorrect), and created/resolved dates. `ErrorLog` captures all frontend and backend errors with timestamp, error type (frontend/backend), message, stack trace, user ID, URL, user agent, severity level, and context for debugging and monitoring.
 
 ### Frontend
 
@@ -54,6 +54,7 @@ Exposes a RESTful JSON API with endpoints like `/chat`, `/auth/login`, `/auth/lo
 - **Predictions Management**: `/api/predictions` handles GET (retrieve all user predictions), POST (create new prediction), and PATCH (update prediction outcome). Calculates accuracy stats as correct / (total - outstanding).
 - **Scores API**: `/api/scores` calculates current NFL gameweek, fetches live scores from ESPN's public API, and caches results hourly.
 - **Game Details API**: `/api/game/<game_id>` fetches detailed game information including scoring plays, play-by-play data, and team statistics from ESPN.
+- **Error Logging**: `/api/log-error` receives frontend error reports and stores them in the database. `/admin/errors` provides access to all logged errors with filtering by type, severity, and resolved status. Global error handler captures all backend exceptions automatically.
 
 ### Security
 
