@@ -1388,8 +1388,14 @@ EXPLANATION: [Brief 1-2 sentence explanation of why]"""
                 'message': 'Could not generate diagrams at this time'
             }
 
-    def chat(self, user_message: str, conversation_history: list, fantasy_context: dict = None) -> tuple:
+    def chat(self, user_message: str, conversation_history: list, user_id: str, fantasy_context: dict = None) -> tuple:
         """Main chat interface with tool use.
+        
+        Args:
+            user_message: The user's message
+            conversation_history: List of previous messages
+            user_id: Current user's ID for saving predictions
+            fantasy_context: Optional fantasy team context
         
         Returns:
             tuple: (assistant_message, conversation_history, tool_usage_data)
@@ -1993,7 +1999,7 @@ def create_app():
             
             # Get fantasy context as dict to pass to chat (for credential injection)
             fantasy_context_dict = json.loads(conversation.fantasy_context) if conversation.fantasy_context else {}
-            response, updated_history, tool_usage = companion.chat(user_message, conversation_history, fantasy_context=fantasy_context_dict)
+            response, updated_history, tool_usage = companion.chat(user_message, conversation_history, user_id=current_user.id, fantasy_context=fantasy_context_dict)
             
             # If route/play analysis was used, store the context for follow-up questions
             if tool_usage.get('used_analyze_player_routes_plays'):
