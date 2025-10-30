@@ -45,6 +45,7 @@ MANDATORY TOOL CALLS - DO THESE FIRST:
 OTHER TOOLS:
 
 **Fantasy:** Check FANTASY FOOTBALL CONTEXT for saved team and credentials. If no fantasy team is configured, direct user to the Fantasy tab (bottom navigation) to set up their team - they can choose scoring system, manually enter players, or connect ESPN league. Never ask for league IDs or cookies in chat - always point to Fantasy tab. Once configured, use fantasy data from context for personalized advice
+**Predictions:** When user makes a prediction (e.g., "I think X will win", "Chiefs will beat the Ravens"), ask if they'd like to save it to their Predictions tab. Use save_prediction tool to save it. Users can track accuracy in Predictions tab
 **Scores:** get_live_scores for current games. Filter by date for "today" queries
 **Recap:** get_live_scores for game_id, then get_play_by_play. Show scoring plays, top performers with stats
 **Injuries:** get_injury_report (optional team_name). Explain: Out/Doubtful/Questionable/IR
@@ -237,6 +238,33 @@ OTHER TOOLS:
                 'news': []
             }
 
+    def save_prediction(self, prediction_text: str, user_id: str) -> dict:
+        """Save a prediction made by the user to their predictions tab."""
+        try:
+            from models import Prediction
+            
+            new_prediction = Prediction(
+                user_id=user_id,
+                prediction_text=prediction_text,
+                outcome='pending'
+            )
+            
+            db.session.add(new_prediction)
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': f'Prediction saved! You can view and track it in your Predictions tab.'
+            }
+            
+        except Exception as e:
+            logging.error(f"Error saving prediction: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Could not save prediction'
+            }
+    
     def check_fantasy_team_injuries(self, fantasy_context: dict) -> dict:
         """Check for injury-related news for players on the user's fantasy team."""
         try:
@@ -1344,6 +1372,20 @@ OTHER TOOLS:
                 }
             },
             {
+                "name": "save_prediction",
+                "description": "Save a prediction made by the user to their Predictions tab. Use this when the user makes a prediction about future NFL events (e.g., 'I think the Chiefs will win', 'Ravens will beat the Steelers', 'Mahomes will throw 3 TDs'). Ask the user to confirm if they'd like to save the prediction so they can track its accuracy later.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "prediction_text": {
+                            "type": "string",
+                            "description": "The user's prediction text"
+                        }
+                    },
+                    "required": ["prediction_text"]
+                }
+            },
+            {
                 "name": "analyze_player_routes_plays",
                 "description": "Analyzes a player's most successful routes (for WR/TE) or plays (for QB) from their games this season. Use this when users ask about a player's favorite routes, best plays, route tree, or play tendencies. Returns top routes/plays with success rates, targets/attempts, yards, and touchdowns. Only works for QB, WR, and TE positions.",
                 "input_schema": {
@@ -1463,6 +1505,9 @@ OTHER TOOLS:
             elif tool_name == "get_nfl_news":
                 limit = tool_input.get("limit", 10)
                 tool_result = self.get_nfl_news(min(limit, 20))
+            elif tool_name == "save_prediction":
+                prediction_text = tool_input["prediction_text"]
+                tool_result = self.save_prediction(prediction_text, user_id)
             elif tool_name == "analyze_player_routes_plays":
                 player_name = tool_input["player_name"]
                 position = tool_input["position"]
@@ -2254,6 +2299,126 @@ Return ONLY the JSON, nothing else."""
             
         except Exception as e:
             logging.error(f"Fantasy team update error: {e}")
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/predictions', methods=['GET', 'POST'])
+    @require_login
+    def predictions():
+        """Get or create predictions."""
+        if request.method == 'GET':
+            # Return all predictions for current user
+            from models import Prediction
+            user_predictions = Prediction.query.filter_by(user_id=current_user.id).order_by(Prediction.created_at.desc()).all()
+            
+            predictions_list = []
+            for pred in user_predictions:
+                predictions_list.append({
+                    'id': pred.id,
+                    'text': pred.prediction_text,
+                    'outcome': pred.outcome,
+                    'created_at': pred.created_at.isoformat() if pred.created_at else None,
+                    'settled_at': pred.settled_at.isoformat() if pred.settled_at else None
+                })
+            
+            # Calculate stats
+            total = len(predictions_list)
+            outstanding = len([p for p in predictions_list if p['outcome'] == 'pending'])
+            settled = total - outstanding
+            correct = len([p for p in predictions_list if p['outcome'] == 'correct'])
+            accuracy = (correct / settled * 100) if settled > 0 else 0
+            
+            return jsonify({
+                'success': True,
+                'predictions': predictions_list,
+                'stats': {
+                    'total': total,
+                    'outstanding': outstanding,
+                    'accuracy': round(accuracy, 1)
+                }
+            })
+        
+        # POST - Create new prediction
+        try:
+            from models import Prediction
+            data = request.get_json()
+            
+            prediction_text = data.get('text', '').strip()
+            if not prediction_text:
+                return jsonify({
+                    'success': False,
+                    'error': 'Prediction text is required'
+                }), 400
+            
+            new_prediction = Prediction(
+                user_id=current_user.id,
+                prediction_text=prediction_text,
+                outcome='pending'
+            )
+            
+            db.session.add(new_prediction)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Prediction saved successfully',
+                'prediction': {
+                    'id': new_prediction.id,
+                    'text': new_prediction.prediction_text,
+                    'outcome': new_prediction.outcome,
+                    'created_at': new_prediction.created_at.isoformat()
+                }
+            })
+            
+        except Exception as e:
+            logging.error(f"Prediction creation error: {e}")
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/predictions/<int:prediction_id>', methods=['PATCH'])
+    @require_login
+    def update_prediction(prediction_id):
+        """Update prediction outcome."""
+        try:
+            from models import Prediction
+            prediction = Prediction.query.filter_by(id=prediction_id, user_id=current_user.id).first()
+            
+            if not prediction:
+                return jsonify({
+                    'success': False,
+                    'error': 'Prediction not found'
+                }), 404
+            
+            data = request.get_json()
+            outcome = data.get('outcome')
+            
+            if outcome not in ['correct', 'incorrect', 'pending']:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid outcome. Must be correct, incorrect, or pending'
+                }), 400
+            
+            prediction.outcome = outcome
+            if outcome != 'pending':
+                prediction.settled_at = datetime.now()
+            else:
+                prediction.settled_at = None
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Prediction updated successfully'
+            })
+            
+        except Exception as e:
+            logging.error(f"Prediction update error: {e}")
             db.session.rollback()
             return jsonify({
                 'success': False,

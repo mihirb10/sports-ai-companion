@@ -1125,3 +1125,166 @@ switchView = function(viewId) {
         loadFantasyTeam();
     }
 };
+
+// ============================
+// Predictions Management
+// ============================
+
+const newPredictionText = document.getElementById('newPredictionText');
+const savePredictionBtn = document.getElementById('savePredictionBtn');
+const predictionsList = document.getElementById('predictionsList');
+const predictionsMessage = document.getElementById('predictionsMessage');
+const accuracyValue = document.getElementById('accuracyValue');
+const totalValue = document.getElementById('totalValue');
+const outstandingValue = document.getElementById('outstandingValue');
+
+// Load predictions
+function loadPredictions() {
+    fetch('/api/predictions')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPredictions(data.predictions, data.stats);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading predictions:', error);
+        });
+}
+
+// Display predictions
+function displayPredictions(predictions, stats) {
+    // Update stats
+    accuracyValue.textContent = stats.total > 0 ? `${stats.accuracy}%` : '-';
+    totalValue.textContent = stats.total;
+    outstandingValue.textContent = stats.outstanding;
+    
+    // Display predictions list
+    if (predictions.length === 0) {
+        predictionsList.innerHTML = '<p class="no-predictions">No predictions yet. Make your first prediction above!</p>';
+        return;
+    }
+    
+    predictionsList.innerHTML = '';
+    
+    predictions.forEach(pred => {
+        const predItem = document.createElement('div');
+        predItem.className = `prediction-item ${pred.outcome}`;
+        
+        const createdDate = new Date(pred.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        let statusBadge = '';
+        if (pred.outcome === 'pending') {
+            statusBadge = '<span class="prediction-badge pending">Pending</span>';
+        } else if (pred.outcome === 'correct') {
+            statusBadge = '<span class="prediction-badge correct">✓ Correct</span>';
+        } else if (pred.outcome === 'incorrect') {
+            statusBadge = '<span class="prediction-badge incorrect">✗ Incorrect</span>';
+        }
+        
+        predItem.innerHTML = `
+            <div class="prediction-header">
+                <span class="prediction-date">${escapeHtml(createdDate)}</span>
+                ${statusBadge}
+            </div>
+            <div class="prediction-text">${escapeHtml(pred.text)}</div>
+            ${pred.outcome === 'pending' ? `
+                <div class="prediction-actions">
+                    <button class="mark-btn mark-correct" data-id="${pred.id}">Mark Correct</button>
+                    <button class="mark-btn mark-incorrect" data-id="${pred.id}">Mark Incorrect</button>
+                </div>
+            ` : ''}
+        `;
+        
+        predictionsList.appendChild(predItem);
+    });
+    
+    // Add event listeners for mark buttons
+    document.querySelectorAll('.mark-correct').forEach(btn => {
+        btn.addEventListener('click', () => updatePredictionOutcome(btn.dataset.id, 'correct'));
+    });
+    
+    document.querySelectorAll('.mark-incorrect').forEach(btn => {
+        btn.addEventListener('click', () => updatePredictionOutcome(btn.dataset.id, 'incorrect'));
+    });
+}
+
+// Save new prediction
+if (savePredictionBtn) {
+    savePredictionBtn.addEventListener('click', () => {
+        const text = newPredictionText.value.trim();
+        
+        if (!text) {
+            showPredictionsMessage('Please enter a prediction', 'error');
+            return;
+        }
+        
+        fetch('/api/predictions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                newPredictionText.value = '';
+                showPredictionsMessage('Prediction saved!', 'success');
+                loadPredictions();
+            } else {
+                showPredictionsMessage('Error saving prediction', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving prediction:', error);
+            showPredictionsMessage('Error saving prediction', 'error');
+        });
+    });
+}
+
+// Update prediction outcome
+function updatePredictionOutcome(predictionId, outcome) {
+    fetch(`/api/predictions/${predictionId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ outcome })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showPredictionsMessage(`Prediction marked as ${outcome}!`, 'success');
+            loadPredictions();
+        } else {
+            showPredictionsMessage('Error updating prediction', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating prediction:', error);
+        showPredictionsMessage('Error updating prediction', 'error');
+    });
+}
+
+function showPredictionsMessage(message, type) {
+    predictionsMessage.textContent = message;
+    predictionsMessage.className = `predictions-message ${type}`;
+    predictionsMessage.style.display = 'block';
+    setTimeout(() => {
+        predictionsMessage.style.display = 'none';
+    }, 3000);
+}
+
+// Update switchView to load predictions when switching to predictions tab
+const originalSwitchView2 = switchView;
+switchView = function(viewId) {
+    originalSwitchView2(viewId);
+    if (viewId === 'predictionsView') {
+        loadPredictions();
+    }
+};

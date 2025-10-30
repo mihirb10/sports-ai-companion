@@ -51,3 +51,14 @@ class Conversation(db.Model):
     last_injury_check = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+class Prediction(db.Model):
+    __tablename__ = 'predictions'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
+    prediction_text = db.Column(Text, nullable=False)
+    outcome = db.Column(db.String, nullable=False, default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    settled_at = db.Column(db.DateTime, nullable=True)
+    
+    user = db.relationship('User', backref='predictions')

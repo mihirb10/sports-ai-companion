@@ -214,9 +214,39 @@
         <div id="predictionsView" class="view-section">
             <div class="predictions-container">
                 <h2 class="predictions-title">Predictions</h2>
-                <div class="predictions-content">
-                    <p class="predictions-placeholder">Predictions feature coming soon!</p>
+                
+                <!-- Stats Summary -->
+                <div class="predictions-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="accuracyValue">-</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalValue">0</div>
+                        <div class="stat-label">Total Made</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="outstandingValue">0</div>
+                        <div class="stat-label">Outstanding</div>
+                    </div>
                 </div>
+
+                <!-- New Prediction Form -->
+                <div class="new-prediction-section">
+                    <h3>Make a Prediction</h3>
+                    <textarea id="newPredictionText" placeholder="Enter your prediction... (e.g., 'The Chiefs will win the Super Bowl')" rows="3"></textarea>
+                    <button id="savePredictionBtn" class="save-prediction-btn">Save Prediction</button>
+                </div>
+
+                <!-- Predictions List -->
+                <div class="predictions-list-section">
+                    <h3>Your Predictions</h3>
+                    <div id="predictionsList" class="predictions-list">
+                        <p class="no-predictions">No predictions yet. Make your first prediction above!</p>
+                    </div>
+                </div>
+
+                <div id="predictionsMessage" class="predictions-message" style="display: none;"></div>
             </div>
         </div>
 
