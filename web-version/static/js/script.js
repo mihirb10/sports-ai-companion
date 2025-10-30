@@ -1194,8 +1194,9 @@ function displayPredictions(predictions, stats) {
             <div class="prediction-text">${escapeHtml(pred.text)}</div>
             ${pred.outcome === 'pending' ? `
                 <div class="prediction-actions">
-                    <button class="mark-btn mark-correct" data-id="${pred.id}">Mark Correct</button>
-                    <button class="mark-btn mark-incorrect" data-id="${pred.id}">Mark Incorrect</button>
+                    <button class="check-btn" data-id="${pred.id}" data-text="${escapeHtml(pred.text).replace(/"/g, '&quot;')}">
+                        Check for Result
+                    </button>
                 </div>
             ` : ''}
         `;
@@ -1203,13 +1204,9 @@ function displayPredictions(predictions, stats) {
         predictionsList.appendChild(predItem);
     });
     
-    // Add event listeners for mark buttons
-    document.querySelectorAll('.mark-correct').forEach(btn => {
-        btn.addEventListener('click', () => updatePredictionOutcome(btn.dataset.id, 'correct'));
-    });
-    
-    document.querySelectorAll('.mark-incorrect').forEach(btn => {
-        btn.addEventListener('click', () => updatePredictionOutcome(btn.dataset.id, 'incorrect'));
+    // Add event listeners for check buttons
+    document.querySelectorAll('.check-btn').forEach(btn => {
+        btn.addEventListener('click', () => checkPredictionResult(btn.dataset.id, btn.dataset.text));
     });
 }
 
@@ -1244,6 +1241,40 @@ if (savePredictionBtn) {
             console.error('Error saving prediction:', error);
             showPredictionsMessage('Error saving prediction', 'error');
         });
+    });
+}
+
+// Check prediction result using AI
+function checkPredictionResult(predictionId, predictionText) {
+    // Show loading state
+    showPredictionsMessage('Checking result...', 'info');
+    
+    fetch(`/api/predictions/${predictionId}/check`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.outcome === 'pending') {
+                // Event hasn't happened yet
+                showPredictionsMessage('This prediction cannot be verified yet - the event hasn\'t occurred.', 'info');
+            } else if (data.outcome === 'correct') {
+                showPredictionsMessage('Prediction was correct! 🎯', 'success');
+                loadPredictions();
+            } else if (data.outcome === 'incorrect') {
+                showPredictionsMessage('Prediction was incorrect.', 'error');
+                loadPredictions();
+            }
+        } else {
+            showPredictionsMessage(data.message || 'Error checking prediction', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error checking prediction:', error);
+        showPredictionsMessage('Error checking prediction', 'error');
     });
 }
 
