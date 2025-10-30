@@ -62,3 +62,19 @@ class Prediction(db.Model):
     settled_at = db.Column(db.DateTime, nullable=True)
     
     user = db.relationship('User', backref='predictions')
+
+class ErrorLog(db.Model):
+    __tablename__ = 'error_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, index=True)
+    error_type = db.Column(db.String, nullable=False, index=True)  # 'frontend' or 'backend'
+    message = db.Column(Text, nullable=False)
+    stack_trace = db.Column(Text, nullable=True)
+    user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=True)
+    url = db.Column(db.String, nullable=True)
+    user_agent = db.Column(db.String, nullable=True)
+    severity = db.Column(db.String, nullable=True, default='error')  # 'error', 'warning', 'critical'
+    context = db.Column(Text, nullable=True)  # JSON string for additional context
+    resolved = db.Column(db.Boolean, default=False)
+    
+    user = db.relationship('User', backref='error_logs')

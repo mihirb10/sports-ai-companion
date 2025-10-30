@@ -2595,6 +2595,132 @@ Return ONLY the JSON, nothing else."""
             'api_key_configured': bool(api_key)
         })
     
+    @app.route('/api/log-error', methods=['POST'])
+    def log_error_endpoint():
+        """Log frontend errors."""
+        try:
+            from models import ErrorLog
+            data = request.get_json()
+            
+            # Get user ID if logged in
+            user_id = None
+            if current_user.is_authenticated:
+                user_id = current_user.id
+            
+            # Create error log
+            error_log = ErrorLog(
+                error_type='frontend',
+                message=data.get('message', 'No message')[:1000],  # Limit length
+                stack_trace=data.get('stack', '')[:5000],  # Limit length
+                user_id=user_id,
+                url=data.get('url', '')[:500],
+                user_agent=request.headers.get('User-Agent', '')[:500],
+                severity=data.get('severity', 'error'),
+                context=str(data.get('context', ''))[:2000]
+            )
+            
+            db.session.add(error_log)
+            db.session.commit()
+            
+            return jsonify({'success': True}), 200
+            
+        except Exception as e:
+            logging.error(f"Error logging error: {e}")
+            return jsonify({'success': False}), 500
+    
+    @app.route('/admin/errors', methods=['GET'])
+    @require_login
+    def view_errors():
+        """View all logged errors (admin only)."""
+        try:
+            from models import ErrorLog
+            
+            # Get query parameters
+            limit = request.args.get('limit', 100, type=int)
+            error_type = request.args.get('type', None)
+            resolved = request.args.get('resolved', None)
+            
+            # Build query
+            query = ErrorLog.query.order_by(ErrorLog.created_at.desc())
+            
+            if error_type:
+                query = query.filter_by(error_type=error_type)
+            
+            if resolved is not None:
+                query = query.filter_by(resolved=(resolved.lower() == 'true'))
+            
+            errors = query.limit(limit).all()
+            
+            # Format errors for display
+            error_list = []
+            for error in errors:
+                error_list.append({
+                    'id': error.id,
+                    'created_at': error.created_at.isoformat() if error.created_at else None,
+                    'error_type': error.error_type,
+                    'message': error.message,
+                    'stack_trace': error.stack_trace,
+                    'user_id': error.user_id,
+                    'url': error.url,
+                    'user_agent': error.user_agent,
+                    'severity': error.severity,
+                    'context': error.context,
+                    'resolved': error.resolved
+                })
+            
+            return jsonify({
+                'success': True,
+                'errors': error_list,
+                'count': len(error_list)
+            })
+            
+        except Exception as e:
+            logging.error(f"Error fetching errors: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Global exception handler to log all backend errors."""
+        try:
+            from models import ErrorLog
+            
+            # Get user ID if logged in
+            user_id = None
+            if current_user.is_authenticated:
+                user_id = current_user.id
+            
+            # Get stack trace
+            import traceback
+            stack_trace = traceback.format_exc()
+            
+            # Create error log
+            error_log = ErrorLog(
+                error_type='backend',
+                message=str(e)[:1000],
+                stack_trace=stack_trace[:5000],
+                user_id=user_id,
+                url=request.url[:500] if request else None,
+                user_agent=request.headers.get('User-Agent', '')[:500] if request else None,
+                severity='critical',
+                context=f"Route: {request.endpoint}" if request else None
+            )
+            
+            db.session.add(error_log)
+            db.session.commit()
+            
+        except Exception as log_error:
+            logging.error(f"Failed to log exception: {log_error}")
+        
+        # Return error response
+        logging.error(f"Unhandled exception: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'An internal error occurred'
+        }), 500
+    
     return app
 
 

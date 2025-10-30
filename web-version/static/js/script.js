@@ -1,3 +1,50 @@
+// ============================
+// Error Logger
+// ============================
+
+function logErrorToBackend(errorData) {
+    // Non-blocking error logging
+    try {
+        fetch('/api/log-error', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(errorData)
+        }).catch(() => {}); // Silently fail if logging fails
+    } catch (e) {
+        // Silently fail
+    }
+}
+
+// Capture JavaScript errors
+window.addEventListener('error', (event) => {
+    logErrorToBackend({
+        message: event.message || 'Unknown error',
+        stack: event.error?.stack || '',
+        url: window.location.href,
+        severity: 'error',
+        context: {
+            line: event.lineno,
+            column: event.colno,
+            filename: event.filename
+        }
+    });
+});
+
+// Capture unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+    logErrorToBackend({
+        message: event.reason?.message || String(event.reason) || 'Unhandled promise rejection',
+        stack: event.reason?.stack || '',
+        url: window.location.href,
+        severity: 'error',
+        context: {
+            type: 'promise_rejection'
+        }
+    });
+});
+
 const chatContainer = document.getElementById('chatContainer');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
