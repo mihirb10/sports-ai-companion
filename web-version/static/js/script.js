@@ -640,18 +640,18 @@ function updateChatAvatars() {
 const scoresContent = document.getElementById('scoresContent');
 const weekSelector = document.getElementById('weekSelector');
 const weekDisplay = document.getElementById('weekDisplay');
-let currentWeekNumber = null;
+let espnCurrentWeek = null;
 
 // Load scores data
 function loadScores(week = 'current') {
-    // If we don't have current week number yet, load it first
-    if (!currentWeekNumber && week === 'next') {
-        // Load current week first to get the week number
+    // If we don't have ESPN's current week number yet, load it first
+    if (!espnCurrentWeek && week === 'next') {
+        // Load current week first to get ESPN's week number
         fetch('/api/scores')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    currentWeekNumber = data.current_week;
+                    espnCurrentWeek = data.week;
                     // Now load next week
                     loadScores('next');
                 }
@@ -660,8 +660,8 @@ function loadScores(week = 'current') {
     }
     
     let weekParam = '';
-    if (week === 'next' && currentWeekNumber) {
-        weekParam = `?week=${currentWeekNumber + 1}`;
+    if (week === 'next' && espnCurrentWeek) {
+        weekParam = `?week=${espnCurrentWeek + 1}`;
     }
     
     console.log('Loading scores with params:', weekParam);
@@ -672,9 +672,9 @@ function loadScores(week = 'current') {
             console.log('Scores data received:', data);
             
             if (data.success) {
-                // Store current week number if we don't have it
-                if (!currentWeekNumber) {
-                    currentWeekNumber = data.current_week;
+                // Store ESPN's current week number if we don't have it
+                if (!espnCurrentWeek && week === 'current') {
+                    espnCurrentWeek = data.week;
                 }
                 
                 // Update week display

@@ -2043,33 +2043,19 @@ Return ONLY the JSON, nothing else."""
     def get_scores():
         """Get latest NFL scores for the current or specified gameweek."""
         try:
-            from datetime import timedelta
-            
             # Get week parameter from query string (optional)
             requested_week = request.args.get('week', type=int)
             
-            # Determine current NFL week
-            now = datetime.now()
-            season_start = datetime(2025, 9, 4)
-            days_since_start = (now - season_start).days
-            
-            current_weekday = now.weekday()
-            if current_weekday < 2:
-                days_since_start -= (7 - current_weekday)
-            
-            current_week = max(1, min(18, (days_since_start // 7) + 1))
-            
-            # Use requested week or default to current week
-            week_to_fetch = requested_week if requested_week else None
-            
             # Use the existing get_live_scores method
             if companion:
-                result = companion.get_live_scores(week=week_to_fetch)
+                result = companion.get_live_scores(week=requested_week)
+                
+                # ESPN API returns the actual week number in their response
+                espn_week = result.get('week', 'N/A')
                 
                 return jsonify({
                     'success': True,
-                    'current_week': current_week,
-                    'week': result.get('week', current_week),
+                    'week': espn_week,
                     'games': result.get('games', []),
                     'status': result.get('status', 'No games available')
                 })
