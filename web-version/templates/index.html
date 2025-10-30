@@ -120,19 +120,19 @@
                                 <p class="avatar-help">Or choose a preset:</p>
                                 <div class="preset-avatars" id="presetAvatars">
                                     <button type="button" class="preset-avatar" data-avatar="0">
-                                        <img src="/static/avatars/Football_player_red_jersey_bb2ddfcf.png" alt="Player 1">
+                                        <img src="/static/avatars/comic_red.png" alt="Red Jersey">
                                     </button>
                                     <button type="button" class="preset-avatar" data-avatar="1">
-                                        <img src="/static/avatars/Football_player_blue_jersey_2dc695ec.png" alt="Player 2">
+                                        <img src="/static/avatars/comic_blue.png" alt="Blue Jersey">
                                     </button>
                                     <button type="button" class="preset-avatar" data-avatar="2">
-                                        <img src="/static/avatars/Football_player_green_jersey_d8b5d345.png" alt="Player 3">
+                                        <img src="/static/avatars/comic_green.png" alt="Green Jersey">
                                     </button>
                                     <button type="button" class="preset-avatar" data-avatar="3">
-                                        <img src="/static/avatars/Football_player_black_jersey_d05e4675.png" alt="Player 4">
+                                        <img src="/static/avatars/comic_black.png" alt="Black Jersey">
                                     </button>
                                     <button type="button" class="preset-avatar" data-avatar="4">
-                                        <img src="/static/avatars/Football_player_white_jersey_77a7368f.png" alt="Player 5">
+                                        <img src="/static/avatars/comic_white.png" alt="White Jersey">
                                     </button>
                                 </div>
                             </div>
@@ -163,6 +163,63 @@
             </div>
         </div>
 
+        <!-- Fantasy View -->
+        <div id="fantasyView" class="view-section">
+            <div class="fantasy-container">
+                <h2 class="fantasy-title">Fantasy Team</h2>
+                
+                <div class="fantasy-section">
+                    <h3>Scoring System</h3>
+                    <select id="scoringSystem" class="fantasy-select">
+                        <option value="">Select scoring system</option>
+                        <option value="ppr">PPR (Point Per Reception)</option>
+                        <option value="half_ppr">Half PPR</option>
+                        <option value="standard">Standard</option>
+                    </select>
+                </div>
+
+                <div class="fantasy-section">
+                    <h3>ESPN League Integration (Optional)</h3>
+                    <p class="fantasy-help">Enter your ESPN league details to automatically sync your team:</p>
+                    <div class="fantasy-input-group">
+                        <label for="leagueId">League ID:</label>
+                        <input type="text" id="leagueId" placeholder="Enter your ESPN League ID" class="fantasy-input">
+                    </div>
+                    <div class="fantasy-input-group">
+                        <label for="espnS2">ESPN_S2 Cookie:</label>
+                        <input type="text" id="espnS2" placeholder="ESPN S2 cookie value" class="fantasy-input">
+                    </div>
+                    <div class="fantasy-input-group">
+                        <label for="espnSwid">SWID Cookie:</label>
+                        <input type="text" id="espnSwid" placeholder="SWID cookie value" class="fantasy-input">
+                    </div>
+                </div>
+
+                <div class="fantasy-section">
+                    <h3>My Roster</h3>
+                    <p class="fantasy-help">Or manually enter your players:</p>
+                    <div id="rosterSlots" class="roster-slots"></div>
+                    <button id="addSlotBtn" class="add-slot-btn">+ Add Slot</button>
+                </div>
+
+                <div class="fantasy-actions">
+                    <button id="saveFantasyBtn" class="save-fantasy-btn">Save Fantasy Team</button>
+                </div>
+
+                <div id="fantasyMessage" class="fantasy-message" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Predictions View -->
+        <div id="predictionsView" class="view-section">
+            <div class="predictions-container">
+                <h2 class="predictions-title">Predictions</h2>
+                <div class="predictions-content">
+                    <p class="predictions-placeholder">Predictions feature coming soon!</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-view="chatView">
@@ -180,6 +237,21 @@
                     <line x1="3" y1="15" x2="21" y2="15"></line>
                 </svg>
                 <span>Scores</span>
+            </button>
+            <button class="nav-item" data-view="fantasyView">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                <span>Fantasy</span>
+            </button>
+            <button class="nav-item" data-view="predictionsView">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Predictions</span>
             </button>
             <button class="nav-item" data-view="profileView">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

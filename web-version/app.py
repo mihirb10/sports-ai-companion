@@ -1957,18 +1957,18 @@ Return ONLY the JSON, nothing else."""
             # Return current profile data
             user_avatar_id = hash(current_user.id) % 5
             
-            # Map avatar IDs to actual generated avatar filenames
+            # Map avatar IDs to comic book style avatars
             avatar_files = [
-                '/static/avatars/Football_player_red_jersey_bb2ddfcf.png',
-                '/static/avatars/Football_player_blue_jersey_2dc695ec.png',
-                '/static/avatars/Football_player_green_jersey_d8b5d345.png',
-                '/static/avatars/Football_player_black_jersey_d05e4675.png',
-                '/static/avatars/Football_player_white_jersey_77a7368f.png'
+                '/static/avatars/comic_red.png',
+                '/static/avatars/comic_blue.png',
+                '/static/avatars/comic_green.png',
+                '/static/avatars/comic_black.png',
+                '/static/avatars/comic_white.png'
             ]
             
             # Use custom avatar if set, otherwise use default based on user ID
             avatar_path = current_user.custom_avatar_path
-            if not avatar_path or not avatar_path.startswith('/static/avatars/Football_player'):
+            if not avatar_path or not avatar_path.startswith('/static/avatars/'):
                 avatar_path = avatar_files[user_avatar_id]
             
             return jsonify({
@@ -2021,13 +2021,13 @@ Return ONLY the JSON, nothing else."""
                 try:
                     avatar_id = int(preset_avatar)
                     if 0 <= avatar_id <= 4:
-                        # Map avatar IDs to actual generated avatar filenames
+                        # Map avatar IDs to comic book style avatars
                         avatar_files = [
-                            '/static/avatars/Football_player_red_jersey_bb2ddfcf.png',
-                            '/static/avatars/Football_player_blue_jersey_2dc695ec.png',
-                            '/static/avatars/Football_player_green_jersey_d8b5d345.png',
-                            '/static/avatars/Football_player_black_jersey_d05e4675.png',
-                            '/static/avatars/Football_player_white_jersey_77a7368f.png'
+                            '/static/avatars/comic_red.png',
+                            '/static/avatars/comic_blue.png',
+                            '/static/avatars/comic_green.png',
+                            '/static/avatars/comic_black.png',
+                            '/static/avatars/comic_white.png'
                         ]
                         current_user.custom_avatar_path = avatar_files[avatar_id]
                 except ValueError:
@@ -2157,6 +2157,57 @@ Return ONLY the JSON, nothing else."""
             
         except Exception as e:
             logging.error(f"Game details error: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/fantasy', methods=['GET', 'POST'])
+    @require_login
+    def fantasy_team():
+        """Get or update fantasy team information."""
+        if request.method == 'GET':
+            # Return current fantasy team data
+            return jsonify({
+                'success': True,
+                'fantasy': {
+                    'scoring_system': current_user.fantasy_scoring_system or '',
+                    'roster': current_user.fantasy_roster or '[]',
+                    'league_id': current_user.espn_league_id or '',
+                    'espn_s2': current_user.espn_s2 or '',
+                    'espn_swid': current_user.espn_swid or ''
+                }
+            })
+        
+        # POST - Update fantasy team
+        try:
+            data = request.get_json()
+            
+            if 'scoring_system' in data:
+                current_user.fantasy_scoring_system = data['scoring_system']
+            
+            if 'roster' in data:
+                current_user.fantasy_roster = data['roster']
+            
+            if 'league_id' in data:
+                current_user.espn_league_id = data['league_id']
+            
+            if 'espn_s2' in data:
+                current_user.espn_s2 = data['espn_s2']
+            
+            if 'espn_swid' in data:
+                current_user.espn_swid = data['espn_swid']
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Fantasy team updated successfully'
+            })
+            
+        except Exception as e:
+            logging.error(f"Fantasy team update error: {e}")
+            db.session.rollback()
             return jsonify({
                 'success': False,
                 'error': str(e)
