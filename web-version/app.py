@@ -2086,6 +2086,82 @@ Return ONLY the JSON, nothing else."""
                 'error': str(e)
             }), 500
     
+    @app.route('/api/game/<game_id>')
+    @require_login
+    def get_game_details(game_id):
+        """Get detailed game information including scoring and stats."""
+        try:
+            # Fetch game summary from ESPN
+            summary_url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={game_id}"
+            response = requests.get(summary_url, timeout=10)
+            response.raise_for_status()
+            summary_data = response.json()
+            
+            # Extract scoring information from boxscore
+            boxscore = summary_data.get('boxscore', {})
+            teams = boxscore.get('teams', [])
+            
+            scoring_summary = []
+            team_stats = []
+            
+            for team in teams:
+                team_info = team.get('team', {})
+                stats = team.get('statistics', [])
+                
+                team_stats.append({
+                    'name': team_info.get('displayName', 'Unknown'),
+                    'abbr': team_info.get('abbreviation', ''),
+                    'stats': [{
+                        'label': stat.get('label', ''),
+                        'value': stat.get('displayValue', '')
+                    } for stat in stats]
+                })
+            
+            # Try to get play-by-play data
+            pbp_url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/playbyplay?event={game_id}"
+            pbp_response = requests.get(pbp_url, timeout=10)
+            
+            drives = []
+            scoring_plays = []
+            
+            if pbp_response.status_code == 200:
+                pbp_data = pbp_response.json()
+                
+                # Extract scoring plays
+                if 'scoringPlays' in pbp_data:
+                    for play in pbp_data['scoringPlays']:
+                        scoring_plays.append({
+                            'team': play.get('team', {}).get('abbreviation', ''),
+                            'description': play.get('text', ''),
+                            'score': f"{play.get('awayScore', 0)}-{play.get('homeScore', 0)}"
+                        })
+                
+                # Extract recent drives/plays
+                if 'drives' in pbp_data and 'previous' in pbp_data['drives']:
+                    for drive in pbp_data['drives']['previous'][-5:]:  # Last 5 drives
+                        plays_list = drive.get('plays', [])
+                        if plays_list:
+                            last_play = plays_list[-1]
+                            drives.append({
+                                'team': drive.get('team', {}).get('abbreviation', ''),
+                                'result': drive.get('result', ''),
+                                'description': last_play.get('text', '')
+                            })
+            
+            return jsonify({
+                'success': True,
+                'team_stats': team_stats,
+                'scoring_plays': scoring_plays,
+                'recent_drives': drives
+            })
+            
+        except Exception as e:
+            logging.error(f"Game details error: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
     @app.route('/reset', methods=['POST'])
     @require_login
     def reset():

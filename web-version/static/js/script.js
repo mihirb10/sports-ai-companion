@@ -643,7 +643,7 @@ const weekDisplay = document.getElementById('weekDisplay');
 let espnCurrentWeek = null;
 
 // Load scores data
-function loadScores(week = 'current') {
+function loadScores(week = 'current', silentRefresh = false) {
     // If we don't have ESPN's current week number yet, load it first
     if (!espnCurrentWeek && week === 'next') {
         // Load current week first to get ESPN's week number
@@ -683,13 +683,26 @@ function loadScores(week = 'current') {
                 }
                 
                 if (data.games && data.games.length > 0) {
-                    renderScores(data.games);
+                    // Check if any games are live
+                    hasLiveGames = data.games.some(game => 
+                        game.status && (game.status.includes('In Progress') || game.status.includes('Halftime'))
+                    );
+                    
+                    renderScores(data.games, silentRefresh);
+                    
+                    // Start auto-refresh if there are live games
+                    if (hasLiveGames) {
+                        startAutoRefresh();
+                    } else {
+                        stopAutoRefresh();
+                    }
                 } else {
                     scoresContent.innerHTML = `
                         <div class="scores-loading">
                             <p style="color: var(--text-secondary);">${data.status || 'No games available'}</p>
                         </div>
                     `;
+                    stopAutoRefresh();
                 }
             } else {
                 scoresContent.innerHTML = `
@@ -716,13 +729,43 @@ if (weekSelector) {
     });
 }
 
+// Auto-refresh scores every 30 seconds if there are live games
+let autoRefreshInterval = null;
+let hasLiveGames = false;
+
+function startAutoRefresh() {
+    if (autoRefreshInterval) return;
+    
+    autoRefreshInterval = setInterval(() => {
+        if (hasLiveGames && currentTab === 'scores') {
+            // Silently refresh scores without loading indicator
+            const currentWeek = weekSelector?.value || 'current';
+            loadScores(currentWeek, true); // true = silent refresh
+        }
+    }, 30000); // 30 seconds
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
+// Track expanded game
+let expandedGameId = null;
+
 // Render scores with team logos
-function renderScores(games) {
+function renderScores(games, silentRefresh = false) {
+    // If silent refresh and a game is expanded, preserve the expansion
+    const wasExpanded = expandedGameId;
+    
     scoresContent.innerHTML = '';
     
     games.forEach(game => {
         const gameCard = document.createElement('div');
         gameCard.className = 'game-card';
+        gameCard.dataset.gameId = game.game_id;
         
         const homeScore = game.home_score !== undefined && game.home_score !== 'N/A' ? game.home_score : '-';
         const awayScore = game.away_score !== undefined && game.away_score !== 'N/A' ? game.away_score : '-';
@@ -743,31 +786,160 @@ function renderScores(games) {
         }
         
         gameCard.innerHTML = `
-            <div class="game-status">${escapeHtml(status)}</div>
-            <div class="game-matchup">
-                <div class="team-row">
-                    <div class="team-logo-container">
-                        ${game.away_logo ? `<img src="${escapeHtml(game.away_logo)}" alt="${escapeHtml(game.away_abbr)}" class="team-logo">` : ''}
-                        <span class="team-abbr">${escapeHtml(game.away_abbr || 'TBD')}</span>
+            <div class="game-summary">
+                <div class="game-status">${escapeHtml(status)}</div>
+                <div class="game-matchup">
+                    <div class="team-row">
+                        <div class="team-logo-container">
+                            ${game.away_logo ? `<img src="${escapeHtml(game.away_logo)}" alt="${escapeHtml(game.away_abbr)}" class="team-logo">` : ''}
+                            <span class="team-abbr">${escapeHtml(game.away_abbr || 'TBD')}</span>
+                        </div>
+                        <div class="team-score">${awayScore !== '-' ? awayScore : ''}</div>
                     </div>
-                    <div class="team-score">${awayScore !== '-' ? awayScore : ''}</div>
-                </div>
-                <div class="team-row">
-                    <div class="team-logo-container">
-                        ${game.home_logo ? `<img src="${escapeHtml(game.home_logo)}" alt="${escapeHtml(game.home_abbr)}" class="team-logo">` : ''}
-                        <span class="team-abbr">${escapeHtml(game.home_abbr || 'TBD')}</span>
+                    <div class="team-row">
+                        <div class="team-logo-container">
+                            ${game.home_logo ? `<img src="${escapeHtml(game.home_logo)}" alt="${escapeHtml(game.home_abbr)}" class="team-logo">` : ''}
+                            <span class="team-abbr">${escapeHtml(game.home_abbr || 'TBD')}</span>
+                        </div>
+                        <div class="team-score">${homeScore !== '-' ? homeScore : ''}</div>
                     </div>
-                    <div class="team-score">${homeScore !== '-' ? homeScore : ''}</div>
                 </div>
+                ${kickoffTime || game.location ? `
+                    <div class="game-details">
+                        ${kickoffTime ? `<div class="game-time">🕐 ${escapeHtml(kickoffTime)}</div>` : ''}
+                        ${game.location ? `<div class="game-location">📍 ${escapeHtml(game.location)}</div>` : ''}
+                    </div>
+                ` : ''}
             </div>
-            ${kickoffTime || game.location ? `
-                <div class="game-details">
-                    ${kickoffTime ? `<div class="game-time">🕐 ${escapeHtml(kickoffTime)}</div>` : ''}
-                    ${game.location ? `<div class="game-location">📍 ${escapeHtml(game.location)}</div>` : ''}
-                </div>
-            ` : ''}
+            <div class="game-expanded" style="display: none;">
+                <div class="loading-details">Loading details...</div>
+            </div>
         `;
         
+        // Add click handler to expand/collapse
+        gameCard.addEventListener('click', () => toggleGameDetails(gameCard, game.game_id));
+        
         scoresContent.appendChild(gameCard);
+        
+        // Re-expand if this was the expanded game
+        if (silentRefresh && wasExpanded === game.game_id) {
+            toggleGameDetails(gameCard, game.game_id);
+        }
     });
+}
+
+// Toggle game details
+function toggleGameDetails(gameCard, gameId) {
+    const expandedSection = gameCard.querySelector('.game-expanded');
+    const isExpanded = expandedSection.style.display === 'block';
+    
+    if (isExpanded) {
+        // Collapse
+        expandedSection.style.display = 'none';
+        gameCard.classList.remove('expanded');
+        expandedGameId = null;
+    } else {
+        // Collapse any other expanded cards
+        document.querySelectorAll('.game-card.expanded').forEach(card => {
+            card.querySelector('.game-expanded').style.display = 'none';
+            card.classList.remove('expanded');
+        });
+        
+        // Expand this card
+        expandedSection.style.display = 'block';
+        gameCard.classList.add('expanded');
+        expandedGameId = gameId;
+        
+        // Load game details
+        loadGameDetails(gameId, expandedSection);
+    }
+}
+
+// Load game details
+function loadGameDetails(gameId, container) {
+    container.innerHTML = '<div class="loading-details">Loading details...</div>';
+    
+    fetch(`/api/game/${gameId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderGameDetails(data, container);
+            } else {
+                container.innerHTML = '<div class="details-error">Unable to load game details</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading game details:', error);
+            container.innerHTML = '<div class="details-error">Unable to load game details</div>';
+        });
+}
+
+// Render game details
+function renderGameDetails(data, container) {
+    let html = '';
+    
+    // Scoring plays
+    if (data.scoring_plays && data.scoring_plays.length > 0) {
+        html += `
+            <div class="details-section">
+                <h4>Scoring Plays</h4>
+                <div class="scoring-plays">
+                    ${data.scoring_plays.map(play => `
+                        <div class="scoring-play">
+                            <div class="play-team">${escapeHtml(play.team)}</div>
+                            <div class="play-desc">${escapeHtml(play.description)}</div>
+                            <div class="play-score">${escapeHtml(play.score)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Recent drives
+    if (data.recent_drives && data.recent_drives.length > 0) {
+        html += `
+            <div class="details-section">
+                <h4>Recent Plays</h4>
+                <div class="recent-plays">
+                    ${data.recent_drives.map(drive => `
+                        <div class="play-item">
+                            <div class="play-team-badge">${escapeHtml(drive.team)}</div>
+                            <div class="play-text">${escapeHtml(drive.description)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Team stats
+    if (data.team_stats && data.team_stats.length > 0) {
+        html += `
+            <div class="details-section">
+                <h4>Team Statistics</h4>
+                <div class="team-stats">
+                    ${data.team_stats.map(team => `
+                        <div class="team-stat-group">
+                            <div class="stat-team-name">${escapeHtml(team.name)}</div>
+                            <div class="stats-list">
+                                ${team.stats.slice(0, 5).map(stat => `
+                                    <div class="stat-row">
+                                        <span class="stat-label">${escapeHtml(stat.label)}:</span>
+                                        <span class="stat-value">${escapeHtml(stat.value)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (!html) {
+        html = '<div class="no-details">Game details will be available once the game starts</div>';
+    }
+    
+    container.innerHTML = html;
 }
