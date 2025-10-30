@@ -489,6 +489,9 @@ navItems.forEach(item => {
 document.addEventListener('DOMContentLoaded', () => {
     const lastView = localStorage.getItem('activeView') || 'chatView';
     switchView(lastView);
+    
+    // Load profile data on startup to set avatar paths for chat
+    loadProfile();
 });
 
 // ============================
@@ -512,6 +515,14 @@ function loadProfile() {
             if (data.success) {
                 const profile = data.profile;
                 displayNameInput.value = profile.display_name || '';
+                
+                // Update global user data for chat avatars
+                window.userDisplayName = profile.display_name;
+                window.userCustomAvatar = profile.custom_avatar_path;
+                window.userAvatarId = profile.fallback_avatar_id;
+                
+                // Update chat avatars to reflect profile changes
+                updateChatAvatars();
                 
                 // Set avatar preview
                 if (profile.custom_avatar_path) {
