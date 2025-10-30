@@ -265,6 +265,107 @@ OTHER TOOLS:
                 'message': 'Could not save prediction'
             }
     
+    def check_prediction_result(self, prediction_text: str) -> dict:
+        """Use Claude to check if a prediction came true, is false, or is yet to be determined."""
+        try:
+            prompt = f"""You are checking if an NFL prediction came true or not. 
+
+PREDICTION: "{prediction_text}"
+
+Analyze this prediction based on current NFL data and determine one of three outcomes:
+
+1. **correct** - The prediction came true and the event has already occurred
+2. **incorrect** - The prediction did not come true and the event has already occurred  
+3. **pending** - The event in question has not occurred yet, so we cannot verify the prediction
+
+TODAY'S DATE: {datetime.now().strftime('%B %d, %Y')}
+
+Use your knowledge of recent NFL games, scores, and events. If you need live data, use the get_live_scores tool to check recent games.
+
+Return your answer in this exact format:
+OUTCOME: [correct|incorrect|pending]
+EXPLANATION: [Brief 1-2 sentence explanation of why]"""
+
+            response = self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}],
+                tools=[
+                    {
+                        "name": "get_live_scores",
+                        "description": "Get live NFL scores to verify game outcomes",
+                        "input_schema": {
+                            "type": "object",
+                            "properties": {
+                                "week": {
+                                    "type": "integer",
+                                    "description": "NFL week number (1-18 for regular season)"
+                                }
+                            }
+                        }
+                    }
+                ]
+            )
+            
+            # Handle tool use if needed
+            if response.stop_reason == "tool_use":
+                # Process tool calls
+                tool_results = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        if block.name == "get_live_scores":
+                            week = block.input.get("week")
+                            scores_result = self.get_live_scores(week)
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": str(scores_result)
+                            })
+                
+                # Get final response with tool results
+                follow_up = self.client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=500,
+                    messages=[
+                        {"role": "user", "content": prompt},
+                        {"role": "assistant", "content": response.content},
+                        {"role": "user", "content": tool_results}
+                    ]
+                )
+                response = follow_up
+            
+            # Parse response
+            response_text = ""
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    response_text += block.text
+            
+            # Extract outcome and explanation
+            outcome = 'pending'
+            explanation = ''
+            
+            lines = response_text.strip().split('\n')
+            for line in lines:
+                if line.startswith('OUTCOME:'):
+                    outcome_value = line.replace('OUTCOME:', '').strip().lower()
+                    if outcome_value in ['correct', 'incorrect', 'pending']:
+                        outcome = outcome_value
+                elif line.startswith('EXPLANATION:'):
+                    explanation = line.replace('EXPLANATION:', '').strip()
+            
+            return {
+                'success': True,
+                'outcome': outcome,
+                'explanation': explanation
+            }
+            
+        except Exception as e:
+            logging.error(f"Error checking prediction: {e}")
+            return {
+                'success': False,
+                'message': f'Error checking prediction: {str(e)}'
+            }
+    
     def check_fantasy_team_injuries(self, fantasy_context: dict) -> dict:
         """Check for injury-related news for players on the user's fantasy team."""
         try:
@@ -2419,6 +2520,52 @@ Return ONLY the JSON, nothing else."""
             
         except Exception as e:
             logging.error(f"Prediction update error: {e}")
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/predictions/<int:prediction_id>/check', methods=['POST'])
+    @require_login
+    def check_prediction(prediction_id):
+        """Check if a prediction came true using AI."""
+        try:
+            from models import Prediction
+            prediction = Prediction.query.filter_by(id=prediction_id, user_id=current_user.id).first()
+            
+            if not prediction:
+                return jsonify({
+                    'success': False,
+                    'error': 'Prediction not found'
+                }), 404
+            
+            # Use NFLCompanion to check the prediction
+            companion = NFLCompanion(api_key)
+            result = companion.check_prediction_result(prediction.prediction_text)
+            
+            if result.get('success'):
+                outcome = result.get('outcome')
+                
+                # If outcome is determined (correct or incorrect), update the database
+                if outcome in ['correct', 'incorrect']:
+                    prediction.outcome = outcome
+                    prediction.settled_at = datetime.now()
+                    db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'outcome': outcome,
+                    'explanation': result.get('explanation', '')
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': result.get('message', 'Could not check prediction')
+                }), 500
+            
+        except Exception as e:
+            logging.error(f"Prediction check error: {e}")
             db.session.rollback()
             return jsonify({
                 'success': False,
